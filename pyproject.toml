@@ -44,3 +44,7 @@ ignore = ["S101", "S603", "B008"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
+markers = [
+    "compat: imports the real LumiBot package (LumiBot adapter compatibility)",
+    "integration: needs network access (set RUN_INTEGRATION=1)",
+]
