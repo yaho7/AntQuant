@@ -94,7 +94,7 @@ jobs:
             type=ref,event=pr
 
       - name: Build for smoke test
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           platforms: linux/amd64
@@ -129,7 +129,7 @@ jobs:
 
       - name: Push
         if: github.event_name != 'pull_request'
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           # arm64 is off until LumiBot's binary dependencies are verified on it.
