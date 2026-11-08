@@ -23,7 +23,11 @@ from backend.core.config import PROJECT_ROOT
 def test_compat_probe_passes() -> None:
     proc = subprocess.run(
         [sys.executable, "-m", "backend.workers.compat"],
-        cwd=PROJECT_ROOT, capture_output=True, text=True, timeout=300, check=False,
+        cwd=PROJECT_ROOT,
+        capture_output=True,
+        text=True,
+        timeout=300,
+        check=False,
     )
     report = json.loads([ln for ln in proc.stdout.splitlines() if ln.startswith("{")][-1])
     failed = [c for c in report["checks"] if not c["ok"]]
@@ -52,18 +56,28 @@ def test_real_yahoo_backtest(tmp_path: Path) -> None:
     work = tmp_path / "task"
     work.mkdir()
     spec = {
-        "task_id": "it", "kind": "backtest", "data_source": "yahoo",
+        "task_id": "it",
+        "kind": "backtest",
+        "data_source": "yahoo",
         "strategy_file": str(PROJECT_ROOT / "strategies/examples/sma_crossover.py"),
-        "class_name": "SmaCrossover", "name": "SmaCrossover",
-        "start": date(2023, 1, 1).isoformat(), "end": date(2023, 12, 31).isoformat(),
-        "budget": 10000, "benchmark": "SPY",
+        "class_name": "SmaCrossover",
+        "name": "SmaCrossover",
+        "start": date(2023, 1, 1).isoformat(),
+        "end": date(2023, 12, 31).isoformat(),
+        "budget": 10000,
+        "benchmark": "SPY",
         "parameters": {"symbol": "SPY", "fast": 10, "slow": 30, "cash_fraction": 0.9},
     }
     (work / "spec.json").write_text(json.dumps(spec))
     env = {**os.environ, "PYTHONPATH": str(PROJECT_ROOT)}
     proc = subprocess.run(
         [sys.executable, "-m", "backend.workers.backtest_worker", str(work)],
-        cwd=work, env=env, capture_output=True, text=True, timeout=900, check=False,
+        cwd=work,
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=900,
+        check=False,
     )
     assert proc.returncode == 0, proc.stdout[-3000:] + proc.stderr[-3000:]
     result = json.loads((work / "result.json").read_text())

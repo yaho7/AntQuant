@@ -207,9 +207,7 @@ class AlpacaAdapter:
     def close_all_positions(self, cancel_orders: bool = True) -> list[dict[str, Any]]:
         def run(c: Any) -> list[dict[str, Any]]:
             responses = c.close_all_positions(cancel_orders=cancel_orders)
-            return [
-                {"symbol": str(r.symbol), "status": int(r.status)} for r in (responses or [])
-            ]
+            return [{"symbol": str(r.symbol), "status": int(r.status)} for r in (responses or [])]
 
         result = self._call(None, run)
         self.invalidate()

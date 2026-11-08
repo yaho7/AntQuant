@@ -155,8 +155,17 @@ def file(task_id: str, kind: str, db: Session = Depends(get_db)) -> FileResponse
 def export_trades(task_id: str, db: Session = Depends(get_db)) -> Response:
     data = result(task_id, db)
     buf = io.StringIO()
-    fields = ["time", "symbol", "asset_type", "side", "quantity", "price", "multiplier", "fee",
-              "order_type"]
+    fields = [
+        "time",
+        "symbol",
+        "asset_type",
+        "side",
+        "quantity",
+        "price",
+        "multiplier",
+        "fee",
+        "order_type",
+    ]
     writer = csv.DictWriter(buf, fieldnames=fields, extrasaction="ignore")
     writer.writeheader()
     writer.writerows(data.get("trades", []))

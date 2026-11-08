@@ -63,9 +63,15 @@ def test_form_posts_rejected(authed: TestClient) -> None:
 def test_login_logout_and_throttle(authed: TestClient) -> None:
     authed.post("/api/auth/logout", json={})
     assert authed.get("/api/strategies").status_code == 401
-    assert authed.post("/api/auth/login", json={"username": "admin", "password": PASSWORD}).status_code == 200
-    authed.post("/api/auth/logout", json={}, headers={
-        "X-CSRF-Token": authed.get("/api/auth/me").json()["csrf_token"]})
+    assert (
+        authed.post("/api/auth/login", json={"username": "admin", "password": PASSWORD}).status_code
+        == 200
+    )
+    authed.post(
+        "/api/auth/logout",
+        json={},
+        headers={"X-CSRF-Token": authed.get("/api/auth/me").json()["csrf_token"]},
+    )
     for _ in range(5):
         r = authed.post("/api/auth/login", json={"username": "admin", "password": "nope"})
         assert r.status_code == 401

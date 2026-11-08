@@ -82,8 +82,10 @@ def put_setting(
     if key not in _INT_SETTINGS:
         raise HTTPException(404, "Unknown setting.")
     low, high = _INT_SETTINGS[key]
-    if not isinstance(body.value, int) or isinstance(body.value, bool) or not (
-        low <= body.value <= high
+    if (
+        not isinstance(body.value, int)
+        or isinstance(body.value, bool)
+        or not (low <= body.value <= high)
     ):
         raise HTTPException(400, f"Value must be a whole number from {low} to {high}.")
     set_setting(db, key, body.value)
@@ -152,8 +154,12 @@ def system_status(db: Session = Depends(get_db)) -> dict[str, Any]:
         "uptime_seconds": int(time.time() - STARTED),
         "active_tasks": [task_out(t) for t in active],
         "events": [
-            {"time": e.created_at.isoformat(), "level": e.level, "source": e.source,
-             "message": e.message}
+            {
+                "time": e.created_at.isoformat(),
+                "level": e.level,
+                "source": e.source,
+                "message": e.message,
+            }
             for e in events
         ],
     }
@@ -220,7 +226,13 @@ def updates(settings: Settings = Depends(settings_dep)) -> dict[str, Any]:
 def audit_log(limit: int = 100, db: Session = Depends(get_db)) -> list[dict[str, Any]]:
     rows = db.scalars(select(AuditLog).order_by(AuditLog.id.desc()).limit(min(limit, 500)))
     return [
-        {"time": r.created_at.isoformat(), "action": r.action, "target": r.target,
-         "detail": r.detail, "ip": r.ip, "success": r.success}
+        {
+            "time": r.created_at.isoformat(),
+            "action": r.action,
+            "target": r.target,
+            "detail": r.detail,
+            "ip": r.ip,
+            "success": r.success,
+        }
         for r in rows
     ]

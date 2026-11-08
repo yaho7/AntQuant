@@ -10,13 +10,24 @@ from backend.services.backtest_metrics import (
     round_trip_stats,
 )
 
-TRADES_HEADER = "time,side,status,filled_quantity,symbol,asset.asset_type,price,asset.multiplier," \
+TRADES_HEADER = (
+    "time,side,status,filled_quantity,symbol,asset.asset_type,price,asset.multiplier,"
     "trade_cost,event_kind\n"
+)
 
 
 def fill(side: str, qty: float, price: float, symbol: str = "SPY", fee: float = 0.0) -> dict:
-    return {"time": "t", "symbol": symbol, "asset_type": "stock", "side": side,
-            "quantity": qty, "price": price, "multiplier": 1.0, "fee": fee, "order_type": "market"}
+    return {
+        "time": "t",
+        "symbol": symbol,
+        "asset_type": "stock",
+        "side": side,
+        "quantity": qty,
+        "price": price,
+        "multiplier": 1.0,
+        "fee": fee,
+        "order_type": "market",
+    }
 
 
 def test_round_trips_fifo() -> None:
@@ -49,8 +60,9 @@ def test_no_losses_profit_factor_undefined() -> None:
 
 
 def test_drawdown_curve() -> None:
-    dd = drawdown_curve([{"time": "a", "value": 100}, {"time": "b", "value": 80},
-                         {"time": "c", "value": 120}])
+    dd = drawdown_curve(
+        [{"time": "a", "value": 100}, {"time": "b", "value": 80}, {"time": "c", "value": 120}]
+    )
     assert [p["value"] for p in dd] == [0.0, -0.2, 0.0]
 
 
@@ -71,8 +83,10 @@ def test_build_result_from_files(tmp_path: Path) -> None:
     )
     out = build_result(stats, trades, {"cagr": float("nan"), "sharpe": 1.5}, 1000)
     m = out["metrics"]
-    assert out["equity_curve"] == [{"time": "2024-01-02", "value": 1010.0},
-                                   {"time": "2024-01-03", "value": 990.0}]
+    assert out["equity_curve"] == [
+        {"time": "2024-01-02", "value": 1010.0},
+        {"time": "2024-01-03", "value": 990.0},
+    ]
     assert m["annualized_return"] is None  # NaN becomes N/A
     assert m["sharpe_ratio"] == 1.5
     assert m["number_of_trades"] == 2

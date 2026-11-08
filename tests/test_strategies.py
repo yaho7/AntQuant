@@ -58,8 +58,11 @@ def test_create_update_versions(authed: TestClient) -> None:
 def _create_dup(client: TestClient):  # type: ignore[no-untyped-def]
     return client.post(
         "/api/strategies",
-        json={"name": "Hold SPY", "source_path": "examples/buy_and_hold.py",
-              "class_name": "BuyAndHold"},
+        json={
+            "name": "Hold SPY",
+            "source_path": "examples/buy_and_hold.py",
+            "class_name": "BuyAndHold",
+        },
     )
 
 
@@ -70,8 +73,12 @@ def test_bad_parameter_names_rejected(authed: TestClient) -> None:
 
 
 def test_path_traversal_blocked(authed: TestClient) -> None:
-    for path in ("examples/../../backend/main.py", "user/../../../etc/passwd", "/etc/passwd",
-                 "other/x.py"):
+    for path in (
+        "examples/../../backend/main.py",
+        "user/../../../etc/passwd",
+        "/etc/passwd",
+        "other/x.py",
+    ):
         r = authed.post(
             "/api/strategies",
             json={"name": "x", "source_path": path, "class_name": "BuyAndHold"},
@@ -82,9 +89,7 @@ def test_path_traversal_blocked(authed: TestClient) -> None:
 def test_upload_requires_ack_and_strategy_class(authed: TestClient) -> None:
     files = {"file": ("bot.py", GOOD, "text/x-python")}
     assert authed.post("/api/strategies/upload", files=files).status_code == 400
-    r = authed.post(
-        "/api/strategies/upload", files=files, data={"acknowledge_risk": "true"}
-    )
+    r = authed.post("/api/strategies/upload", files=files, data={"acknowledge_risk": "true"})
     assert r.status_code == 200, r.text
     found = r.json()
     assert found[0]["class_name"] == "MyBot"

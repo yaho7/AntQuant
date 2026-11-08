@@ -66,8 +66,12 @@ def create_app(settings: Settings | None = None, start_tasks: bool = True) -> Fa
     async def guard(request: Request, call_next):  # type: ignore[no-untyped-def]
         # State-changing API calls must be JSON or multipart. A cross-site HTML
         # form cannot send these without a CORS preflight, which we never allow.
-        if request.url.path.startswith("/api/") and request.method in {"POST", "PUT", "PATCH",
-                                                                        "DELETE"}:
+        if request.url.path.startswith("/api/") and request.method in {
+            "POST",
+            "PUT",
+            "PATCH",
+            "DELETE",
+        }:
             ctype = request.headers.get("content-type", "")
             has_body = request.headers.get("content-length", "0") not in ("", "0")
             if has_body and not (
@@ -84,10 +88,14 @@ def create_app(settings: Settings | None = None, start_tasks: bool = True) -> Fa
     @app.exception_handler(StarletteHTTPException)
     async def http_error(request: Request, exc: StarletteHTTPException) -> JSONResponse:
         if exc.status_code >= 500:
-            api_log.error("%s %s -> %s: %s", request.method, request.url.path, exc.status_code,
-                          exc.detail)
-        return JSONResponse({"detail": exc.detail}, status_code=exc.status_code,
-                            headers=getattr(exc, "headers", None))
+            api_log.error(
+                "%s %s -> %s: %s", request.method, request.url.path, exc.status_code, exc.detail
+            )
+        return JSONResponse(
+            {"detail": exc.detail},
+            status_code=exc.status_code,
+            headers=getattr(exc, "headers", None),
+        )
 
     @app.exception_handler(Exception)
     async def unhandled(request: Request, exc: Exception) -> JSONResponse:

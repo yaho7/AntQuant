@@ -26,8 +26,15 @@ def main() -> int:
             return 1
         (work_dir / "logs").mkdir(exist_ok=True)
         (work_dir / "result.json").write_text(
-            json.dumps({"metrics": {"total_return": 0.1}, "files": {}, "equity_curve": [],
-                        "drawdown_curve": [], "trades": []})
+            json.dumps(
+                {
+                    "metrics": {"total_return": 0.1},
+                    "files": {},
+                    "equity_curve": [],
+                    "drawdown_curve": [],
+                    "trades": [],
+                }
+            )
         )
         return 0
     stop = {"flag": False}

@@ -153,17 +153,26 @@ class TaskManager:
                 task.ended_at = now()
                 task.error_message = (
                     "Interrupted: the server restarted while this task was running."
-                    + (" Paper trading is not resumed automatically." if task.kind == "trading"
-                       else "")
+                    + (
+                        " Paper trading is not resumed automatically."
+                        if task.kind == "trading"
+                        else ""
+                    )
                 )
-                db.add(SystemEvent(level="WARNING", source="task_manager",
-                                   message=f"Task {task.id} marked failed after restart"))
+                db.add(
+                    SystemEvent(
+                        level="WARNING",
+                        source="task_manager",
+                        message=f"Task {task.id} marked failed after restart",
+                    )
+                )
             db.commit()
 
     # ------------------------------------------------------------ creation
 
-    def _new_task(self, db: Session, strategy: Strategy, kind: str, mode: str,
-                  config: dict[str, Any]) -> Task:
+    def _new_task(
+        self, db: Session, strategy: Strategy, kind: str, mode: str, config: dict[str, Any]
+    ) -> Task:
         task_id = uuid.uuid4().hex[:16]
         work_dir = self.settings.tasks_dir / task_id
         work_dir.mkdir(parents=True, exist_ok=False)
@@ -257,9 +266,7 @@ class TaskManager:
 
     def stop_all_trading(self, db: Session) -> list[str]:
         ids = list(
-            db.scalars(
-                select(Task.id).where(Task.kind == "trading", Task.status.in_(ACTIVE))
-            )
+            db.scalars(select(Task.id).where(Task.kind == "trading", Task.status.in_(ACTIVE)))
         )
         for task_id in ids:
             self.stop(db, task_id)
@@ -300,7 +307,8 @@ class TaskManager:
         }
         (work_dir / "spec.json").write_text(json.dumps(spec))
         env = {
-            k: v for k, v in os.environ.items()
+            k: v
+            for k, v in os.environ.items()
             if not k.startswith(("ALPACA_", "LUMIBOT_UI_ALPACA_"))
         }
         env["PYTHONPATH"] = str(PROJECT_ROOT)
@@ -400,9 +408,9 @@ class TaskManager:
             code = proc.poll()
             if code is not None:
                 self._finalize(task_id, code)
-            elif task_id in self._stop_deadlines and time.monotonic() > self._stop_deadlines[
-                task_id
-            ]:
+            elif (
+                task_id in self._stop_deadlines and time.monotonic() > self._stop_deadlines[task_id]
+            ):
                 log.warning("Task %s ignored stop signal, killing", task_id)
                 self._signal(task_id, signal.SIGKILL)
 
@@ -415,8 +423,10 @@ class TaskManager:
                     if not _pid_matches(task.pid, task.pid_create_time):
                         self._finalize(task.id, None)
                         continue
-                    if task.id in self._stop_deadlines and time.monotonic() > \
-                            self._stop_deadlines[task.id]:
+                    if (
+                        task.id in self._stop_deadlines
+                        and time.monotonic() > self._stop_deadlines[task.id]
+                    ):
                         self._signal(task.id, signal.SIGKILL, pid=task.pid)
                 work_dir = Path(task.work_dir)
                 if task.kind == "backtest":
@@ -424,8 +434,12 @@ class TaskManager:
                     if progress is not None:
                         task.progress = progress
                     started = aware(task.started_at)
-                    if timeout_min and started and (now() - started).total_seconds() > \
-                            timeout_min * 60 and task.id not in self._stop_deadlines:
+                    if (
+                        timeout_min
+                        and started
+                        and (now() - started).total_seconds() > timeout_min * 60
+                        and task.id not in self._stop_deadlines
+                    ):
                         log.warning("Backtest %s timed out after %s min", task.id, timeout_min)
                         self._timed_out.add(task.id)
                         _write_error_file(work_dir, f"Timed out after {timeout_min} minutes.")

@@ -24,16 +24,25 @@ def wait_for(client: TestClient, url: str, predicate, timeout: float = 15):  # t
 def make_strategy(client: TestClient, params: dict | None = None) -> int:
     r = client.post(
         "/api/strategies",
-        json={"name": "S1", "source_path": "examples/buy_and_hold.py",
-              "class_name": "BuyAndHold", "parameters": params or {}},
+        json={
+            "name": "S1",
+            "source_path": "examples/buy_and_hold.py",
+            "class_name": "BuyAndHold",
+            "parameters": params or {},
+        },
     )
     return int(r.json()["id"])
 
 
 def backtest_body(sid: int, **params) -> dict:  # type: ignore[no-untyped-def]
     end = date.today() - timedelta(days=1)
-    return {"strategy_id": sid, "start": (end - timedelta(days=30)).isoformat(),
-            "end": end.isoformat(), "budget": 10000, "parameters": params}
+    return {
+        "strategy_id": sid,
+        "start": (end - timedelta(days=30)).isoformat(),
+        "end": end.isoformat(),
+        "budget": 10000,
+        "parameters": params,
+    }
 
 
 def test_backtest_runs_in_subprocess(authed: TestClient) -> None:
@@ -74,8 +83,10 @@ def test_trading_start_pause_stop(authed: TestClient, data_dir: Path) -> None:
     sid = make_strategy(authed)
     # Without keys trading is refused.
     assert authed.post("/api/trading/start", json={"strategy_id": sid}).status_code == 400
-    authed.put("/api/settings/alpaca/credentials",
-               json={"api_key": "PKTESTKEY1234", "api_secret": "secretsecretsecret12"})
+    authed.put(
+        "/api/settings/alpaca/credentials",
+        json={"api_key": "PKTESTKEY1234", "api_secret": "secretsecretsecret12"},
+    )
     set_broker_override(MockBroker())
     task = authed.post("/api/trading/start", json={"strategy_id": sid}).json()
     assert authed.post("/api/trading/start", json={"strategy_id": sid}).status_code == 409
@@ -92,8 +103,8 @@ def test_trading_start_pause_stop(authed: TestClient, data_dir: Path) -> None:
 
 
 def test_restart_marks_lost_tasks(data_dir: Path, fake_workers: None) -> None:
-    from backend.core.db import init_engine, run_migrations, session_factory
     from backend.core.config import get_settings
+    from backend.core.db import init_engine, run_migrations, session_factory
     from backend.models import Task
     from backend.services.task_manager import TaskManager
 
@@ -103,8 +114,17 @@ def test_restart_marks_lost_tasks(data_dir: Path, fake_workers: None) -> None:
     init_engine(settings.db_path)
     factory = session_factory()
     with factory() as db:
-        db.add(Task(id="lost1", kind="trading", mode="paper", status="running", pid=999999,
-                    work_dir=str(data_dir), log_path=str(data_dir / "x.log")))
+        db.add(
+            Task(
+                id="lost1",
+                kind="trading",
+                mode="paper",
+                status="running",
+                pid=999999,
+                work_dir=str(data_dir),
+                log_path=str(data_dir / "x.log"),
+            )
+        )
         db.commit()
     TaskManager(settings, factory, lambda db: None).recover()
     with factory() as db:

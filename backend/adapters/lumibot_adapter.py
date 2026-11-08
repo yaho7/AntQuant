@@ -176,11 +176,15 @@ def compatibility_report(refresh: bool = False, timeout: float = 120) -> dict[st
                 check=False,
             )
             lines = [ln for ln in proc.stdout.splitlines() if ln.startswith("{")]
-            report = json.loads(lines[-1]) if lines else {
-                "ok": False,
-                "checks": [],
-                "error": (proc.stderr or "compat probe produced no output")[-2000:],
-            }
+            report = (
+                json.loads(lines[-1])
+                if lines
+                else {
+                    "ok": False,
+                    "checks": [],
+                    "error": (proc.stderr or "compat probe produced no output")[-2000:],
+                }
+            )
         except (subprocess.TimeoutExpired, json.JSONDecodeError) as exc:
             report = {"ok": False, "checks": [], "error": str(exc)}
         version = lumibot_version()

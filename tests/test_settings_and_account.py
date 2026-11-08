@@ -12,9 +12,7 @@ SECRET = "SuperSecretValue0123456789abcdef"
 
 
 def test_alpaca_secret_is_write_only(authed: TestClient, data_dir: Path) -> None:
-    r = authed.put(
-        "/api/settings/alpaca/credentials", json={"api_key": KEY, "api_secret": SECRET}
-    )
+    r = authed.put("/api/settings/alpaca/credentials", json={"api_key": KEY, "api_secret": SECRET})
     assert r.status_code == 200
     body = authed.get("/api/settings").text
     assert SECRET not in body and KEY not in body
@@ -75,8 +73,9 @@ def test_live_mode_refused(authed: TestClient) -> None:
 
 
 def test_int_setting_validation(authed: TestClient) -> None:
-    assert authed.put("/api/settings/max_concurrent_backtests", json={"value": 99}).status_code \
-        == 400
+    assert (
+        authed.put("/api/settings/max_concurrent_backtests", json={"value": 99}).status_code == 400
+    )
     r = authed.put("/api/settings/max_concurrent_backtests", json={"value": 2})
     assert r.json()["settings"]["max_concurrent_backtests"] == 2
     assert authed.put("/api/settings/unknown", json={"value": 1}).status_code == 404

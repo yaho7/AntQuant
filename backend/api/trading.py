@@ -60,9 +60,7 @@ def tasks(
     query = select(Task).where(Task.kind == "trading").order_by(Task.created_at.desc())
     if active_only:
         query = query.where(Task.status.in_(ACTIVE))
-    return [
-        {**task_out(t), "heartbeat": _heartbeat(t)} for t in db.scalars(query.limit(limit))
-    ]
+    return [{**task_out(t), "heartbeat": _heartbeat(t)} for t in db.scalars(query.limit(limit))]
 
 
 @router.post("/start")
