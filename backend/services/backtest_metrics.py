@@ -179,7 +179,7 @@ def build_result(
         "profit_factor": rt.profit_factor,
         "number_of_trades": len(fills),
         "closed_trades": rt.closed_trades,
-        "starting_value": equity[0]["value"] if equity else budget,
+        "starting_value": budget if budget else (equity[0]["value"] if equity else None),
         "ending_value": equity[-1]["value"] if equity else None,
     }
     return {

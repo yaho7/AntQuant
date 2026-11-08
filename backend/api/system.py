@@ -22,7 +22,7 @@ from backend.adapters.lumibot_adapter import (
     lumibot_version,
 )
 from backend.api.deps import client_ip, get_db, require_session, settings_dep
-from backend.api.serializers import task_out
+from backend.api.serializers import _iso, task_out
 from backend.core.audit import audit
 from backend.core.config import Settings
 from backend.core.secrets import delete_secret, get_secret, has_secret, mask, set_secret
@@ -155,7 +155,7 @@ def system_status(db: Session = Depends(get_db)) -> dict[str, Any]:
         "active_tasks": [task_out(t) for t in active],
         "events": [
             {
-                "time": e.created_at.isoformat(),
+                "time": _iso(e.created_at),
                 "level": e.level,
                 "source": e.source,
                 "message": e.message,
@@ -227,7 +227,7 @@ def audit_log(limit: int = 100, db: Session = Depends(get_db)) -> list[dict[str,
     rows = db.scalars(select(AuditLog).order_by(AuditLog.id.desc()).limit(min(limit, 500)))
     return [
         {
-            "time": r.created_at.isoformat(),
+            "time": _iso(r.created_at),
             "action": r.action,
             "target": r.target,
             "detail": r.detail,

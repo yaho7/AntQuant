@@ -48,6 +48,9 @@ def setup_worker(work_dir: Path) -> dict[str, Any]:
     handler = logging.StreamHandler(sys.stdout)
     handler.setFormatter(logging.Formatter(LOG_FORMAT))
     handler.addFilter(RedactingFilter())
+    # LumiBot prints its own records through its own handler; skip them here
+    # so each line appears once. stdout is already wrapped for redaction.
+    handler.addFilter(lambda r: not r.name.startswith("lumibot"))
     root = logging.getLogger()
     root.addHandler(handler)
     root.setLevel(logging.INFO)
