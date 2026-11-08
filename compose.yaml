@@ -1,0 +1,12 @@
+services:
+  lumibot-ui:
+    image: ghcr.io/yaho7/lumibot-ui:latest
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - lumibot-data:/data
+    restart: unless-stopped
+    stop_grace_period: 30s
+
+volumes:
+  lumibot-data:
