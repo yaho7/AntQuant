@@ -7,47 +7,54 @@
  * light and dark themes stay in one place.
  */
 :root {
-  --background: oklch(0.99 0.002 250);
-  --foreground: oklch(0.2 0.02 255);
-  --card: oklch(1 0 0);
+  /* Flexoki palette by Steph Ango (MIT), https://stephango.com/flexoki.
+     Calm paper tones; layout ideas follow Wealthfolio's dashboard. */
+  --background: hsl(48 100% 97%);
+  --foreground: hsl(0 3% 6%);
+  --card: hsl(51 59% 95%);
   --card-foreground: var(--foreground);
-  --muted: oklch(0.965 0.005 250);
-  --muted-foreground: oklch(0.5 0.02 255);
-  --border: oklch(0.91 0.008 250);
-  --input: oklch(0.89 0.01 250);
-  --primary: oklch(0.45 0.16 255);
-  --primary-foreground: oklch(0.99 0 0);
-  --accent: oklch(0.955 0.012 250);
+  --muted: hsl(51 21% 88%);
+  --muted-foreground: hsl(50 3% 36%);
+  --border: hsl(51 21% 88%);
+  --input: hsl(50 14% 83%);
+  --primary: hsl(0 3% 6%);
+  --primary-foreground: hsl(48 100% 97%);
+  --accent: hsl(51 21% 88%);
   --accent-foreground: var(--foreground);
-  --ring: oklch(0.6 0.15 255);
-  --gain: oklch(0.55 0.15 155);
-  --loss: oklch(0.56 0.2 25);
-  --warning: oklch(0.7 0.15 75);
-  --chart-1: oklch(0.55 0.17 255);
-  --chart-2: oklch(0.65 0.14 190);
-  --chart-3: oklch(0.7 0.15 75);
-  --chart-4: oklch(0.6 0.18 320);
-  --chart-5: oklch(0.62 0.16 145);
-  --radius: 0.625rem;
+  --ring: hsl(50 3% 36%);
+  --gain: hsl(73 84% 26%);
+  --loss: hsl(3 62% 42%);
+  --warning: hsl(45 99% 28%);
+  --chart-1: #659892;
+  --chart-2: #688daf;
+  --chart-3: #b99f64;
+  --chart-4: #bb7b5b;
+  --chart-5: #83925b;
+  --radius: 0.75rem;
 }
 
 .dark {
-  --background: oklch(0.155 0.008 260);
-  --foreground: oklch(0.94 0.005 250);
-  --card: oklch(0.19 0.01 260);
+  --background: hsl(0 3% 6%);
+  --foreground: hsl(55 10% 79%);
+  --card: hsl(30 4% 11%);
   --card-foreground: var(--foreground);
-  --muted: oklch(0.23 0.01 260);
-  --muted-foreground: oklch(0.68 0.015 255);
-  --border: oklch(0.28 0.012 260);
-  --input: oklch(0.32 0.012 260);
-  --primary: oklch(0.7 0.14 245);
-  --primary-foreground: oklch(0.16 0.02 260);
-  --accent: oklch(0.25 0.012 260);
+  --muted: hsl(30 3% 15%);
+  --muted-foreground: hsl(43 3% 60.5%);
+  --border: hsl(30 3% 15%);
+  --input: hsl(40 3% 20%);
+  --primary: hsl(55 10% 79%);
+  --primary-foreground: hsl(0 3% 6%);
+  --accent: hsl(30 3% 15%);
   --accent-foreground: var(--foreground);
-  --ring: oklch(0.7 0.14 245);
-  --gain: oklch(0.72 0.16 155);
-  --loss: oklch(0.7 0.18 25);
-  --warning: oklch(0.8 0.14 80);
+  --ring: hsl(43 3% 60.5%);
+  --gain: hsl(72 46% 41%);
+  --loss: hsl(5 61% 58.5%);
+  --warning: hsl(45 82% 45%);
+  --chart-1: #5ea49c;
+  --chart-2: #769ebb;
+  --chart-3: #c5a556;
+  --chart-4: #c87c51;
+  --chart-5: #899857;
 }
 
 @theme inline {
@@ -77,6 +84,7 @@
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
   --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Noto Serif", serif;
   --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
 }
 
@@ -95,6 +103,10 @@
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
   }
+  /* Grid tracks never grow past their container (charts, wide tables). */
+  .grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
   :focus-visible {
     outline: 2px solid var(--ring);
     outline-offset: 2px;
@@ -105,4 +117,20 @@
 .num {
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum";
+}
+
+/* Large serif figures for headline amounts. */
+.font-display {
+  font-family: var(--font-display);
+  font-variant-numeric: lining-nums tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+/* Privacy mode: blur amounts until hovered. */
+.privacy .sensitive {
+  filter: blur(7px);
+  transition: filter 0.15s;
+}
+.privacy .sensitive:hover {
+  filter: none;
 }

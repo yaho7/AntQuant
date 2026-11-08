@@ -29,9 +29,9 @@ export function PageHeader({
   actions?: React.ReactNode;
 }) {
   return (
-    <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+    <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
       <div>
-        <h1 className="text-xl font-semibold tracking-tight">{title}</h1>
+        <h1 className="font-display text-3xl font-medium">{title}</h1>
         {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
       </div>
       {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
@@ -143,12 +143,12 @@ export function StatCard({
   loading?: boolean;
 }) {
   return (
-    <Card className="p-4">
+    <Card className="p-5">
       <p className="text-xs font-medium text-muted-foreground">{label}</p>
       {loading ? (
-        <Skeleton className="mt-2 h-7 w-28" />
+        <Skeleton className="mt-2 h-8 w-28" />
       ) : (
-        <p className="num mt-1 text-xl font-semibold tracking-tight">{value ?? NA}</p>
+        <p className="font-display sensitive mt-1.5 text-2xl">{value ?? NA}</p>
       )}
       {sub && <div className="mt-1 text-xs">{sub}</div>}
     </Card>

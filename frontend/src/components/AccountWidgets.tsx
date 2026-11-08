@@ -41,10 +41,10 @@ export function PositionsTable({ positions }: { positions: Position[] }) {
           <tr key={p.symbol}>
             <Td className="font-medium">{p.symbol}</Td>
             <Td className="capitalize">{p.side}</Td>
-            <Td className="num text-right">{num(p.quantity, 4)}</Td>
+            <Td className="num sensitive text-right">{num(p.quantity, 4)}</Td>
             <Td className="num text-right">{money(p.avg_entry_price)}</Td>
             <Td className="num text-right">{money(p.current_price)}</Td>
-            <Td className="num text-right">{money(p.market_value)}</Td>
+            <Td className="num sensitive text-right">{money(p.market_value)}</Td>
             <Td className="text-right">
               <Delta value={p.unrealized_pl}>
                 {signedMoney(p.unrealized_pl)} ({pct(p.unrealized_plpc, 2, true)})
@@ -109,7 +109,7 @@ export function AllocationBar({ positions, cash }: { positions: Position[]; cash
     label === "Cash" ? "var(--muted-foreground)" : `var(${SLICE_COLORS[i % SLICE_COLORS.length]})`;
   return (
     <div className="grid gap-3">
-      <div className="flex h-3 w-full overflow-hidden rounded-full bg-muted" aria-hidden>
+      <div className="flex h-2.5 w-full gap-0.5 overflow-hidden rounded-full" aria-hidden>
         {top.map((s, i) => (
           <div key={s.label} style={{ width: `${(s.value / total) * 100}%`, background: color(s.label, i) }} />
         ))}
@@ -119,7 +119,7 @@ export function AllocationBar({ positions, cash }: { positions: Position[]; cash
           <li key={s.label} className="flex items-center gap-2">
             <span className="size-2.5 rounded-sm" style={{ background: color(s.label, i) }} />
             <span className="flex-1">{s.label}</span>
-            <span className="num text-muted-foreground">{money(s.value, "USD", 0)}</span>
+            <span className="num sensitive text-muted-foreground">{money(s.value, "USD", 0)}</span>
             <span className="num w-14 text-right font-medium">{pct(s.value / total, 1)}</span>
           </li>
         ))}

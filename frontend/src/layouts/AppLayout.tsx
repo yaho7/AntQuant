@@ -1,23 +1,21 @@
 import {
   Activity,
   CandlestickChart,
+  Eye,
+  EyeOff,
   FlaskConical,
   LayoutDashboard,
   LogOut,
-  Menu,
   Monitor,
   Moon,
   ScrollText,
   Settings,
   Sun,
   Workflow,
-  X,
 } from "lucide-react";
-import * as React from "react";
-import { NavLink, Outlet, useLocation } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/primitives";
+import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { usePrivacy } from "@/hooks/usePrivacy";
 import { type Theme, useTheme } from "@/hooks/useTheme";
 import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -31,113 +29,132 @@ const NAV = [
   { to: "/settings", label: t("nav.settings"), icon: Settings },
 ];
 
-function ThemeSwitch() {
-  const [theme, setTheme] = useTheme();
-  const opts: { v: Theme; icon: typeof Sun; label: string }[] = [
-    { v: "light", icon: Sun, label: "Light theme" },
-    { v: "dark", icon: Moon, label: "Dark theme" },
-    { v: "system", icon: Monitor, label: "System theme" },
-  ];
+const NEXT_THEME: Record<Theme, Theme> = { light: "dark", dark: "system", system: "light" };
+const THEME_ICON = { light: Sun, dark: Moon, system: Monitor };
+
+function RailButton({
+  label,
+  onClick,
+  children,
+  pressed,
+}: {
+  label: string;
+  onClick: () => void;
+  children: React.ReactNode;
+  pressed?: boolean;
+}) {
   return (
-    <div className="flex rounded-md bg-muted p-0.5" role="group" aria-label="Theme">
-      {opts.map(({ v, icon: Icon, label }) => (
-        <button
-          key={v}
-          aria-label={label}
-          aria-pressed={theme === v}
-          onClick={() => setTheme(v)}
-          className={cn(
-            "flex size-7 items-center justify-center rounded text-muted-foreground",
-            theme === v && "bg-card text-foreground shadow-xs",
-          )}
-        >
-          <Icon className="size-3.5" />
-        </button>
-      ))}
-    </div>
+    <button
+      onClick={onClick}
+      aria-label={label}
+      aria-pressed={pressed}
+      title={label}
+      className="flex size-10 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-accent hover:text-foreground [&_svg]:size-[18px]"
+    >
+      {children}
+    </button>
   );
 }
 
-function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
+/** Icon rail on desktop, bottom tab bar on phones. */
+export function AppLayout() {
   const { me, logout } = useAuth();
+  const [theme, setTheme] = useTheme();
+  const [privacy, togglePrivacy] = usePrivacy();
+  const ThemeIcon = THEME_ICON[theme];
   return (
-    <div className="flex h-full flex-col gap-4 p-3">
-      <div className="flex items-center gap-2 px-2 pt-1">
-        <div className="flex size-7 items-center justify-center rounded-md bg-primary text-primary-foreground">
-          <Activity className="size-4" />
+    <div className="flex min-h-full">
+      <aside className="sticky top-0 hidden h-screen w-[76px] shrink-0 flex-col items-center gap-1 py-4 md:flex">
+        <div className="mb-5 flex size-10 items-center justify-center rounded-xl bg-primary text-primary-foreground" title="LumiBot UI">
+          <Activity className="size-5" />
         </div>
-        <span className="text-sm font-semibold tracking-tight">LumiBot UI</span>
-        <Badge tone="info" className="ml-auto">
-          Paper
-        </Badge>
+        <nav className="flex flex-col items-center gap-1" aria-label="Main">
+          {NAV.map(({ to, label, icon: Icon, end }) => (
+            <NavLink
+              key={to}
+              to={to}
+              end={end}
+              title={label}
+              className={({ isActive }) =>
+                cn(
+                  "group flex w-16 flex-col items-center gap-1 rounded-xl py-2 text-[10px] font-medium text-muted-foreground transition-colors hover:text-foreground",
+                  isActive && "text-foreground",
+                )
+              }
+            >
+              {({ isActive }) => (
+                <>
+                  <span
+                    className={cn(
+                      "flex h-8 w-11 items-center justify-center rounded-full transition-colors group-hover:bg-accent",
+                      isActive && "bg-card shadow-sm ring-1 ring-border",
+                    )}
+                  >
+                    <Icon className="size-[18px]" />
+                  </span>
+                  {label}
+                </>
+              )}
+            </NavLink>
+          ))}
+        </nav>
+        <div className="mt-auto flex flex-col items-center gap-1">
+          <RailButton label={privacy ? "Show amounts" : "Hide amounts"} onClick={togglePrivacy} pressed={privacy}>
+            {privacy ? <EyeOff /> : <Eye />}
+          </RailButton>
+          <RailButton label={`Theme: ${theme}`} onClick={() => setTheme(NEXT_THEME[theme])}>
+            <ThemeIcon />
+          </RailButton>
+          <RailButton label={`Sign out${me ? ` (${me.username})` : ""}`} onClick={() => void logout()}>
+            <LogOut />
+          </RailButton>
+        </div>
+      </aside>
+
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header className="sticky top-0 z-30 flex h-12 items-center gap-2 border-b bg-background/85 px-4 backdrop-blur md:hidden">
+          <div className="flex size-7 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+            <Activity className="size-4" />
+          </div>
+          <span className="text-sm font-semibold">LumiBot UI</span>
+          <div className="ml-auto flex">
+            <RailButton label={privacy ? "Show amounts" : "Hide amounts"} onClick={togglePrivacy} pressed={privacy}>
+              {privacy ? <EyeOff /> : <Eye />}
+            </RailButton>
+            <RailButton label={`Theme: ${theme}`} onClick={() => setTheme(NEXT_THEME[theme])}>
+              <ThemeIcon />
+            </RailButton>
+            <RailButton label="Sign out" onClick={() => void logout()}>
+              <LogOut />
+            </RailButton>
+          </div>
+        </header>
+        <main className="mx-auto w-full min-w-0 max-w-6xl flex-1 px-4 pb-24 pt-6 sm:px-8 md:pb-10 md:pt-10">
+          <Outlet />
+        </main>
       </div>
-      <nav className="grid gap-0.5" aria-label="Main">
+
+      <nav
+        className="fixed inset-x-3 bottom-3 z-40 flex justify-around rounded-2xl border bg-card/95 p-1.5 shadow-lg backdrop-blur md:hidden"
+        aria-label="Main"
+      >
         {NAV.map(({ to, label, icon: Icon, end }) => (
           <NavLink
             key={to}
             to={to}
             end={end}
-            onClick={onNavigate}
             className={({ isActive }) =>
               cn(
-                "flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
-                isActive && "bg-accent font-medium text-foreground",
+                "flex flex-1 flex-col items-center gap-0.5 rounded-xl py-1.5 text-[10px] text-muted-foreground",
+                isActive && "bg-accent text-foreground",
               )
             }
           >
-            <Icon className="size-4" />
+            <Icon className="size-[18px]" />
             {label}
           </NavLink>
         ))}
       </nav>
-      <div className="mt-auto grid gap-3 border-t pt-3">
-        <div className="flex items-center justify-between px-1">
-          <ThemeSwitch />
-          <Button variant="ghost" size="sm" onClick={() => void logout()} title="Sign out">
-            <LogOut /> <span className="sr-only sm:not-sr-only">Sign out</span>
-          </Button>
-        </div>
-        {me && <p className="px-1 text-xs text-muted-foreground">Signed in as {me.username}</p>}
-      </div>
-    </div>
-  );
-}
-
-export function AppLayout() {
-  const [open, setOpen] = React.useState(false);
-  const location = useLocation();
-  React.useEffect(() => setOpen(false), [location.pathname]);
-  return (
-    <div className="flex min-h-full">
-      <aside className="sticky top-0 hidden h-screen w-60 shrink-0 border-r bg-card md:block">
-        <Sidebar />
-      </aside>
-      {open && (
-        <div className="fixed inset-0 z-40 md:hidden">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setOpen(false)} />
-          <aside className="absolute inset-y-0 left-0 w-64 border-r bg-card">
-            <button
-              className="absolute right-3 top-3"
-              aria-label="Close menu"
-              onClick={() => setOpen(false)}
-            >
-              <X className="size-5" />
-            </button>
-            <Sidebar onNavigate={() => setOpen(false)} />
-          </aside>
-        </div>
-      )}
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex h-12 items-center gap-2 border-b bg-card/90 px-3 backdrop-blur md:hidden">
-          <Button variant="ghost" size="icon" aria-label="Open menu" onClick={() => setOpen(true)}>
-            <Menu />
-          </Button>
-          <span className="text-sm font-semibold">LumiBot UI</span>
-        </header>
-        <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6">
-          <Outlet />
-        </main>
-      </div>
     </div>
   );
 }

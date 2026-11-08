@@ -7,7 +7,7 @@ import {
   OrdersTable,
   PositionsTable,
 } from "@/components/AccountWidgets";
-import { TimeSeriesChart } from "@/components/charts/TimeSeriesChart";
+import { Segmented, TimeSeriesChart } from "@/components/charts/TimeSeriesChart";
 import {
   Delta,
   EmptyState,
@@ -17,7 +17,7 @@ import {
   StatCard,
   StatusBadge,
 } from "@/components/common";
-import { Alert, Badge, Card, CardContent, CardHeader, CardTitle, Select } from "@/components/ui/primitives";
+import { Alert, Badge, Card, CardContent, CardHeader, CardTitle } from "@/components/ui/primitives";
 import {
   useAccountSummary,
   useHistory,
@@ -29,11 +29,11 @@ import {
 import { between, duration, money, pct, signedMoney } from "@/lib/format";
 
 const PERIODS = [
-  { v: "1W", label: "1 week" },
-  { v: "1M", label: "1 month" },
-  { v: "3M", label: "3 months" },
-  { v: "1A", label: "1 year" },
-  { v: "all", label: "All" },
+  { v: "1W", label: "past week", short: "1W" },
+  { v: "1M", label: "past month", short: "1M" },
+  { v: "3M", label: "past 3 months", short: "3M" },
+  { v: "1A", label: "past year", short: "1Y" },
+  { v: "all", label: "all time", short: "All" },
 ];
 
 export function DashboardPage() {
@@ -64,107 +64,101 @@ export function DashboardPage() {
 
   return (
     <>
-      <PageHeader
-        title="Dashboard"
-        description="Broker account overview. Values are account-wide, not per strategy."
-        actions={
-          account && (
-            <Badge tone="info">
-              Alpaca {account.paper ? "Paper" : "LIVE"} · {account.account_id}
-            </Badge>
-          )
-        }
-      />
-
       {summary.isLoading ? (
         <LoadingState rows={2} />
       ) : summary.error ? (
         <ErrorState error={summary.error} onRetry={() => summary.refetch()} />
       ) : !summary.data?.connected ? (
-        <Card className="mb-6">
-          <ConnectBrokerPrompt />
-        </Card>
+        <>
+          <PageHeader title="Dashboard" description="Your broker account at a glance." />
+          <Card className="mb-8">
+            <ConnectBrokerPrompt />
+          </Card>
+        </>
       ) : summary.data.error ? (
-        <Alert tone="loss" className="mb-6">
-          <AlertTriangle />
-          <div>
-            <p className="font-medium">Could not load the Alpaca account</p>
-            <p className="text-muted-foreground">{summary.data.error}</p>
-          </div>
-        </Alert>
+        <>
+          <PageHeader title="Dashboard" />
+          <Alert tone="loss" className="mb-8">
+            <AlertTriangle />
+            <div>
+              <p className="font-medium">Could not load the Alpaca account</p>
+              <p className="text-muted-foreground">{summary.data.error}</p>
+            </div>
+          </Alert>
+        </>
       ) : null}
 
       {account && (
-        <>
+        <section className="mb-10" aria-label="Account overview">
+          <p className="mb-1 flex items-center gap-2 text-xs text-muted-foreground">
+            Alpaca {account.paper ? "paper" : "LIVE"} account · {account.account_id}
+            <Badge tone="info">{account.paper ? "Paper" : "LIVE"}</Badge>
+          </p>
+          <h1 className="font-display sensitive text-5xl font-normal tracking-tight sm:text-6xl">
+            {money(account.equity, account.currency)}
+          </h1>
+          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+            <span className="flex items-center gap-1.5">
+              <Delta value={account.daily_pnl}><span className="sensitive">{signedMoney(account.daily_pnl)}</span></Delta>
+              <Delta value={account.daily_pnl_pct}>{pct(account.daily_pnl_pct, 2, true)}</Delta>
+              <span className="text-muted-foreground">today</span>
+            </span>
+            <span className="h-4 border-e" aria-hidden />
+            <span className="flex items-center gap-1.5">
+              <Delta value={periodPnl}><span className="sensitive">{signedMoney(periodPnl)}</span></Delta>
+              <span className="text-muted-foreground">{PERIODS.find((p) => p.v === period)?.label}</span>
+            </span>
+          </div>
           {account.trading_blocked && (
-            <Alert tone="warning" className="mb-4">
+            <Alert tone="warning" className="mt-4">
               <AlertTriangle /> Alpaca reports trading is blocked on this account.
             </Alert>
           )}
-          <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-5">
-            <StatCard label="Account equity" value={money(account.equity, account.currency)} />
+
+          <div className="-mx-4 mt-6 sm:-mx-8">
+            {history.isLoading ? (
+              <LoadingState rows={6} className="px-8" />
+            ) : history.error ? (
+              <ErrorState error={history.error} onRetry={() => history.refetch()} />
+            ) : equitySeries[0]!.data.length < 2 ? (
+              <EmptyState title="Not enough history yet" description="Alpaca has no portfolio history for this period." />
+            ) : (
+              <TimeSeriesChart series={equitySeries} showRanges={false} minimal height={240} />
+            )}
+          </div>
+          <div className="mt-3 flex justify-center">
+            <Segmented
+              options={PERIODS.map((p) => p.v)}
+              labels={Object.fromEntries(PERIODS.map((p) => [p.v, p.short]))}
+              value={period}
+              onChange={setPeriod}
+              ariaLabel="History period"
+            />
+          </div>
+
+          <div className="mt-8 grid grid-cols-2 gap-3 lg:grid-cols-4">
             <StatCard label="Cash balance" value={money(account.cash, account.currency)} />
             <StatCard label="Buying power" value={money(account.buying_power, account.currency)} />
+            <StatCard label="Long market value" value={money(account.long_market_value, account.currency)} />
             <StatCard
               label="Daily P&L"
               value={<Delta value={account.daily_pnl}>{signedMoney(account.daily_pnl)}</Delta>}
-              sub={<Delta value={account.daily_pnl_pct}>{pct(account.daily_pnl_pct, 2, true)}</Delta>}
-            />
-            <StatCard
-              label={`Total P&L · ${PERIODS.find((p) => p.v === period)?.label}`}
-              loading={history.isLoading}
-              value={<Delta value={periodPnl}>{signedMoney(periodPnl)}</Delta>}
-              sub={<span className="text-muted-foreground">From Alpaca portfolio history</span>}
             />
           </div>
-
-          <div className="mb-6 grid gap-4 lg:grid-cols-3">
-            <Card className="lg:col-span-2">
-              <CardHeader>
-                <CardTitle>Equity curve</CardTitle>
-                <Select
-                  className="h-8 w-32"
-                  value={period}
-                  onChange={(e) => setPeriod(e.target.value)}
-                  aria-label="History period"
-                >
-                  {PERIODS.map((p) => (
-                    <option key={p.v} value={p.v}>{p.label}</option>
-                  ))}
-                </Select>
-              </CardHeader>
-              <CardContent>
-                {history.isLoading ? (
-                  <LoadingState rows={6} />
-                ) : history.error ? (
-                  <ErrorState error={history.error} onRetry={() => history.refetch()} />
-                ) : equitySeries[0]!.data.length < 2 ? (
-                  <EmptyState title="Not enough history yet" description="Alpaca has no portfolio history for this period." />
-                ) : (
-                  <TimeSeriesChart series={equitySeries} showRanges={false} />
-                )}
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle>Asset allocation</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {positions.isLoading ? (
-                  <LoadingState />
-                ) : positions.error ? (
-                  <ErrorState error={positions.error} onRetry={() => positions.refetch()} />
-                ) : (
-                  <AllocationBar positions={positions.data ?? []} cash={account.cash} />
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        </>
+        </section>
       )}
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(20rem,1fr)]">
+        <div className="grid content-start gap-6">
+        {connected && (
+          <Card>
+            <CardHeader><CardTitle>Holdings</CardTitle></CardHeader>
+            <CardContent className="px-0">
+              {positions.data ? <PositionsTable positions={positions.data} /> : <LoadingState />}
+            </CardContent>
+          </Card>
+        )}
+        <Card>
           <CardHeader>
             <CardTitle>Recent trades</CardTitle>
             {connected && <Link className="text-xs text-primary" to="/trading">View all</Link>}
@@ -181,8 +175,25 @@ export function DashboardPage() {
             )}
           </CardContent>
         </Card>
+        </div>
 
         <div className="grid content-start gap-4">
+          {account && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Allocation</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {positions.isLoading ? (
+                  <LoadingState />
+                ) : positions.error ? (
+                  <ErrorState error={positions.error} onRetry={() => positions.refetch()} />
+                ) : (
+                  <AllocationBar positions={positions.data ?? []} cash={account.cash} />
+                )}
+              </CardContent>
+            </Card>
+          )}
           <Card>
             <CardHeader>
               <CardTitle>Active strategies</CardTitle>
@@ -277,16 +288,6 @@ export function DashboardPage() {
         </div>
       </div>
 
-      {connected && (
-        <Card className="mt-4">
-          <CardHeader>
-            <CardTitle>Positions</CardTitle>
-          </CardHeader>
-          <CardContent className="px-0">
-            {positions.data ? <PositionsTable positions={positions.data} /> : <LoadingState />}
-          </CardContent>
-        </Card>
-      )}
     </>
   );
 }

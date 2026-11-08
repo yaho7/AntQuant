@@ -10,7 +10,6 @@ import {
   type UTCTimestamp,
 } from "lightweight-charts";
 import * as React from "react";
-import { Button } from "@/components/ui/button";
 import { money, pct } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { Point } from "@/types/api";
@@ -69,12 +68,15 @@ export function TimeSeriesChart({
   height = 280,
   className,
   showRanges = true,
+  minimal = false,
 }: {
   series: SeriesSpec[];
   format?: ValueFormat;
   height?: number;
   className?: string;
   showRanges?: boolean;
+  /** Hero style: no grid, no price axis, no legend. */
+  minimal?: boolean;
 }) {
   const ref = React.useRef<HTMLDivElement>(null);
   const chartRef = React.useRef<IChartApi | null>(null);
@@ -102,11 +104,11 @@ export function TimeSeriesChart({
         fontFamily: getComputedStyle(document.body).fontFamily,
         attributionLogo: false,
       },
-      grid: { vertLines: { visible: false }, horzLines: { color: grid } },
-      rightPriceScale: { borderVisible: false },
-      timeScale: { borderVisible: false },
+      grid: { vertLines: { visible: false }, horzLines: { color: grid, visible: !minimal } },
+      rightPriceScale: { borderVisible: false, visible: !minimal },
+      timeScale: { borderVisible: false, visible: !minimal },
       crosshair: { mode: CrosshairMode.Magnet },
-      localization: { priceFormatter: (p: number) => fmt(p) },
+      localization: { locale: "en-US", priceFormatter: (p: number) => fmt(p) },
       handleScale: true,
       handleScroll: true,
     });
@@ -118,10 +120,11 @@ export function TimeSeriesChart({
           ? chart.addSeries(LineSeries, { color: line, lineWidth: 2, priceLineVisible: false })
           : chart.addSeries(AreaSeries, {
               lineColor: line,
-              topColor: cssColor(s.color, 0.25),
-              bottomColor: cssColor(s.color, 0.02),
+              topColor: cssColor(s.color, minimal ? 0.18 : 0.22),
+              bottomColor: cssColor(s.color, 0),
               lineWidth: 2,
               priceLineVisible: false,
+              lastValueVisible: !minimal,
             });
       api.setData(s.data.map((p) => ({ time: toTime(p.time), value: p.value })));
       return api;
@@ -149,7 +152,7 @@ export function TimeSeriesChart({
       chart.remove();
       chartRef.current = null;
     };
-  }, [series, height, dark, fmt]);
+  }, [series, height, dark, fmt, minimal]);
 
   const applyRange = (label: string, days: number) => {
     setRange(label);
@@ -173,8 +176,8 @@ export function TimeSeriesChart({
   const shown = legend?.values ?? latest;
 
   return (
-    <div className={cn("grid gap-2", className)}>
-      <div className="flex flex-wrap items-center justify-between gap-2">
+    <div className={cn("grid min-w-0 gap-2", className)}>
+      <div className={cn("flex flex-wrap items-center justify-between gap-2", minimal && "hidden")}>
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
           {series.map((s, i) => (
             <span key={s.name} className="inline-flex items-center gap-1.5">
@@ -190,23 +193,49 @@ export function TimeSeriesChart({
           {legend && <span className="num text-muted-foreground">{legend.time}</span>}
         </div>
         {showRanges && (
-          <div className="flex gap-1" role="group" aria-label="Time range">
-            {RANGES.map((r) => (
-              <Button
-                key={r.label}
-                size="sm"
-                variant={range === r.label ? "secondary" : "ghost"}
-                className="h-7 px-2"
-                aria-pressed={range === r.label}
-                onClick={() => applyRange(r.label, r.days)}
-              >
-                {r.label}
-              </Button>
-            ))}
-          </div>
+          <Segmented
+            options={RANGES.map((r) => r.label)}
+            value={range}
+            onChange={(label) => applyRange(label, RANGES.find((r) => r.label === label)!.days)}
+            ariaLabel="Time range"
+          />
         )}
       </div>
-      <div ref={ref} style={{ height }} className="w-full" />
+      <div ref={ref} style={{ height }} className="w-full min-w-0 overflow-hidden" />
+    </div>
+  );
+}
+
+/** Pill segmented control, used for period and range pickers. */
+export function Segmented({
+  options,
+  value,
+  onChange,
+  ariaLabel,
+  labels,
+}: {
+  options: readonly string[];
+  value: string;
+  onChange: (v: string) => void;
+  ariaLabel: string;
+  labels?: Record<string, string>;
+}) {
+  return (
+    <div className="inline-flex rounded-full bg-muted p-0.5" role="group" aria-label={ariaLabel}>
+      {options.map((o) => (
+        <button
+          key={o}
+          type="button"
+          aria-pressed={value === o}
+          onClick={() => onChange(o)}
+          className={cn(
+            "num h-7 rounded-full px-3 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground",
+            value === o && "bg-background text-foreground shadow-sm",
+          )}
+        >
+          {labels?.[o] ?? o}
+        </button>
+      ))}
     </div>
   );
 }

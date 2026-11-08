@@ -100,7 +100,7 @@ function TradesTable({ trades }: { trades: BacktestResult["trades"] }) {
         <tbody>
           {trades.slice(0, limit).map((t, i) => (
             <tr key={i}>
-              <Td className="num text-xs">{dateTime(t.time)}</Td>
+              <Td className="num text-xs" title="Exchange time">{t.time.slice(0, 16)}</Td>
               <Td className="font-medium">{t.symbol}</Td>
               <Td className="capitalize">{t.side}</Td>
               <Td className="capitalize text-xs">{t.order_type}</Td>

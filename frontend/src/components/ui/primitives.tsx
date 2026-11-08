@@ -4,18 +4,18 @@ import { cn } from "@/lib/utils";
 export function Card({ className, ...p }: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={cn("rounded-lg border bg-card text-card-foreground shadow-xs", className)}
+      className={cn("rounded-xl border border-transparent bg-card text-card-foreground", className)}
       {...p}
     />
   );
 }
 
 export function CardHeader({ className, ...p }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("flex items-start justify-between gap-3 p-4 pb-2", className)} {...p} />;
+  return <div className={cn("flex items-start justify-between gap-3 p-5 pb-2", className)} {...p} />;
 }
 
 export function CardTitle({ className, ...p }: React.HTMLAttributes<HTMLHeadingElement>) {
-  return <h3 className={cn("text-sm font-semibold tracking-tight", className)} {...p} />;
+  return <h3 className={cn("text-[15px] font-semibold tracking-tight", className)} {...p} />;
 }
 
 export function CardDescription({ className, ...p }: React.HTMLAttributes<HTMLParagraphElement>) {
@@ -23,14 +23,14 @@ export function CardDescription({ className, ...p }: React.HTMLAttributes<HTMLPa
 }
 
 export function CardContent({ className, ...p }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("p-4 pt-2", className)} {...p} />;
+  return <div className={cn("p-5 pt-2", className)} {...p} />;
 }
 
 export function Input({ className, ...p }: React.InputHTMLAttributes<HTMLInputElement>) {
   return (
     <input
       className={cn(
-        "flex h-9 w-full rounded-md border border-input bg-card px-3 py-1 text-sm transition-colors placeholder:text-muted-foreground disabled:opacity-50",
+        "flex h-9 w-full rounded-lg border border-input bg-background px-3 py-1 text-sm transition-colors placeholder:text-muted-foreground disabled:opacity-50",
         className,
       )}
       {...p}
@@ -42,7 +42,7 @@ export function Textarea({ className, ...p }: React.TextareaHTMLAttributes<HTMLT
   return (
     <textarea
       className={cn(
-        "flex min-h-20 w-full rounded-md border border-input bg-card px-3 py-2 text-sm placeholder:text-muted-foreground disabled:opacity-50",
+        "flex min-h-20 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground disabled:opacity-50",
         className,
       )}
       {...p}
@@ -54,7 +54,7 @@ export function Select({ className, ...p }: React.SelectHTMLAttributes<HTMLSelec
   return (
     <select
       className={cn(
-        "flex h-9 w-full rounded-md border border-input bg-card px-2 text-sm disabled:opacity-50",
+        "flex h-9 w-full rounded-lg border border-input bg-background px-2 text-sm disabled:opacity-50",
         className,
       )}
       {...p}

@@ -30,7 +30,7 @@ export function MetricsGrid({ metrics, notes = {} }: { metrics: Metrics; notes?:
   return (
     <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
       {items.map((it) => (
-        <Card key={it.key} className="p-3">
+        <Card key={it.key} className="min-w-0 p-4">
           <p className="flex items-center gap-1 text-xs text-muted-foreground">
             {it.label}
             {notes[it.key] && (
@@ -39,7 +39,7 @@ export function MetricsGrid({ metrics, notes = {} }: { metrics: Metrics; notes?:
               </span>
             )}
           </p>
-          <p className="num mt-1 text-lg font-semibold">{it.value}</p>
+          <p className="font-display mt-1 text-2xl">{it.value}</p>
           {notes[it.key] && <p className="mt-0.5 text-[11px] leading-tight text-muted-foreground">{notes[it.key]}</p>}
         </Card>
       ))}
