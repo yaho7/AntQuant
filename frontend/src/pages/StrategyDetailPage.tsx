@@ -21,6 +21,7 @@ import { useAccountSummary } from "@/hooks/queries";
 import { dateTime, money, num, pct } from "@/lib/format";
 import { api } from "@/services/api";
 import type { Backtest, Fill, Params, Strategy, StrategyVersion } from "@/types/api";
+import { t } from "@/lib/i18n";
 
 function OverviewTab({ strategy }: { strategy: Strategy }) {
   const qc = useQueryClient();
@@ -47,7 +48,7 @@ function OverviewTab({ strategy }: { strategy: Strategy }) {
       void qc.invalidateQueries({ queryKey: ["strategies"] });
       void qc.invalidateQueries({ queryKey: ["strategy", strategy.id, "versions"] });
       setNote("");
-      toast.success(`Saved as version ${s.version}`);
+      toast.success(t("Saved as version {v}", { v: s.version }));
     },
     onError: toast.error,
   });
@@ -56,29 +57,25 @@ function OverviewTab({ strategy }: { strategy: Strategy }) {
     <Card>
       <CardContent className="grid gap-4 pt-4">
         {running && (
-          <Alert tone="info">
-            Changes apply to the next run. The running paper strategy keeps the parameters it started with.
-          </Alert>
+          <Alert tone="info">{t("Changes apply to the next run. The running paper strategy keeps the parameters it started with.")} </Alert>
         )}
         <div className="grid gap-4 md:grid-cols-2">
-          <Field label="Name" htmlFor="n"><Input id="n" value={name} onChange={(e) => setName(e.target.value)} /></Field>
-          <Field label="Source">
+          <Field label={t("Name")} htmlFor="n"><Input id="n" value={name} onChange={(e) => setName(e.target.value)} /></Field>
+          <Field label={t("Source")}>
             <p className="flex h-9 items-center truncate font-mono text-xs text-muted-foreground">
               {strategy.source_path} · {strategy.class_name}
             </p>
           </Field>
         </div>
-        <Field label="Description" htmlFor="d"><Textarea id="d" value={description} onChange={(e) => setDescription(e.target.value)} /></Field>
-        <Field label="Parameters" htmlFor="p">
+        <Field label={t("Description")} htmlFor="d"><Textarea id="d" value={description} onChange={(e) => setDescription(e.target.value)} /></Field>
+        <Field label={t("Parameters")} htmlFor="p">
           <ParamsEditor id="p" value={params} onChange={(p, err) => { if (p) setParams(p); setParamsError(err); }} />
         </Field>
-        <Field label="Change note (optional)" htmlFor="note">
-          <Input id="note" value={note} maxLength={255} onChange={(e) => setNote(e.target.value)} placeholder="e.g. Faster SMA window" />
+        <Field label={t("Change note (optional)")} htmlFor="note">
+          <Input id="note" value={note} maxLength={255} onChange={(e) => setNote(e.target.value)} placeholder={t("e.g. Faster SMA window")} />
         </Field>
         <div className="flex justify-end">
-          <Button disabled={!dirty || !!paramsError || !name.trim()} loading={save.isPending} onClick={() => save.mutate()}>
-            Save new version
-          </Button>
+          <Button disabled={!dirty || !!paramsError || !name.trim()} loading={save.isPending} onClick={() => save.mutate()}>{t("Save new version")} </Button>
         </div>
       </CardContent>
     </Card>
@@ -96,13 +93,13 @@ function PerformanceTab({ strategyId }: { strategyId: number }) {
       {(data) => (
         <div className="grid gap-4">
           <Card>
-            <CardHeader><CardTitle>Backtests</CardTitle></CardHeader>
+            <CardHeader><CardTitle>{t("Backtests")}</CardTitle></CardHeader>
             <CardContent className="px-0">
               {data.backtests.length === 0 ? (
-                <EmptyState title="No backtests yet" />
+                <EmptyState title={t("No backtests yet")} />
               ) : (
                 <Table>
-                  <thead><tr><Th>Started</Th><Th>Period</Th><Th>Status</Th><Th className="text-right">Return</Th><Th className="text-right">Max DD</Th><Th className="text-right">Sharpe</Th></tr></thead>
+                  <thead><tr><Th>{t("Started")}</Th><Th>{t("Period")}</Th><Th>{t("Status")}</Th><Th className="text-right">{t("Return")}</Th><Th className="text-right">{t("Max DD")}</Th><Th className="text-right">{t("Sharpe")}</Th></tr></thead>
                   <tbody>
                     {data.backtests.map((b) => (
                       <tr key={b.id}>
@@ -122,7 +119,7 @@ function PerformanceTab({ strategyId }: { strategyId: number }) {
           <Card>
             <CardHeader>
               <div>
-                <CardTitle>Paper fills by this strategy</CardTitle>
+                <CardTitle>{t("Paper fills by this strategy")}</CardTitle>
                 <p className="mt-1 text-xs text-muted-foreground">
                   Fills recorded by this strategy's own runs. Account equity is shared by all strategies on the
                   account, so per-strategy P&amp;L is not derived from it.
@@ -131,10 +128,10 @@ function PerformanceTab({ strategyId }: { strategyId: number }) {
             </CardHeader>
             <CardContent className="px-0">
               {data.fills.length === 0 ? (
-                <EmptyState title="No paper fills recorded" />
+                <EmptyState title={t("No paper fills recorded")} />
               ) : (
                 <Table>
-                  <thead><tr><Th>Time</Th><Th>Symbol</Th><Th>Side</Th><Th className="text-right">Qty</Th><Th className="text-right">Price</Th></tr></thead>
+                  <thead><tr><Th>{t("Time")}</Th><Th>{t("Symbol")}</Th><Th>{t("Side")}</Th><Th className="text-right">{t("Qty")}</Th><Th className="text-right">{t("Price")}</Th></tr></thead>
                   <tbody>
                     {data.fills.map((f, i) => (
                       <tr key={i}>
@@ -168,7 +165,7 @@ function VersionsTab({ strategyId }: { strategyId: number }) {
     onSuccess: (s) => {
       qc.setQueryData(["strategy", strategyId], s);
       void qc.invalidateQueries({ queryKey: ["strategy", strategyId, "versions"] });
-      toast.success(`Restored as version ${s.version}`);
+      toast.success(t("Restored as version {v}", { v: s.version }));
     },
     onError: toast.error,
   });
@@ -177,7 +174,7 @@ function VersionsTab({ strategyId }: { strategyId: number }) {
       <QueryBoundary query={versions}>
         {(list) => (
           <Table>
-            <thead><tr><Th>Version</Th><Th>Saved</Th><Th>Note</Th><Th>Code hash</Th><Th>Parameters</Th><Th /></tr></thead>
+            <thead><tr><Th>{t("Version")}</Th><Th>{t("Saved")}</Th><Th>{t("Note")}</Th><Th>{t("Code hash")}</Th><Th>{t("Parameters")}</Th><Th /></tr></thead>
             <tbody>
               {list.map((v, i) => (
                 <tr key={v.version}>
@@ -189,8 +186,7 @@ function VersionsTab({ strategyId }: { strategyId: number }) {
                   <Td className="text-right">
                     {i > 0 && (
                       <Button size="sm" variant="ghost" loading={restore.isPending && restore.variables === v.version} onClick={() => restore.mutate(v.version)}>
-                        <History /> Restore
-                      </Button>
+                        <History /> {t("Restore")} </Button>
                     )}
                   </Td>
                 </tr>
@@ -272,10 +268,10 @@ export function StrategyDetailPage() {
             }
             actions={
               <>
-                <Button asChild variant="outline" size="sm"><Link to={`/backtesting?strategy=${s.id}`}><FlaskConical /> Backtest</Link></Button>
-                <Button asChild variant="outline" size="sm"><Link to={`/logs?strategy=${s.id}`}><ScrollText /> Logs</Link></Button>
+                <Button asChild variant="outline" size="sm"><Link to={`/backtesting?strategy=${s.id}`}><FlaskConical /> {t("Backtest")}</Link></Button>
+                <Button asChild variant="outline" size="sm"><Link to={`/logs?strategy=${s.id}`}><ScrollText /> {t("Logs")}</Link></Button>
                 <TradingControls strategyId={s.id} task={trading} brokerConnected={!!summary.data?.connected} />
-                <Button variant="ghost" size="sm" onClick={() => setArchiving(true)}><Archive /> Archive</Button>
+                <Button variant="ghost" size="sm" onClick={() => setArchiving(true)}><Archive /> {t("Archive")}</Button>
               </>
             }
           />
@@ -284,10 +280,10 @@ export function StrategyDetailPage() {
           )}
           <Tabs defaultValue="overview">
             <TabsList>
-              <TabsTrigger value="overview">Configuration</TabsTrigger>
-              <TabsTrigger value="performance">Performance</TabsTrigger>
-              <TabsTrigger value="versions">Versions</TabsTrigger>
-              <TabsTrigger value="code">Code</TabsTrigger>
+              <TabsTrigger value="overview">{t("Configuration")}</TabsTrigger>
+              <TabsTrigger value="performance">{t("Performance")}</TabsTrigger>
+              <TabsTrigger value="versions">{t("Versions")}</TabsTrigger>
+              <TabsTrigger value="code">{t("Code")}</TabsTrigger>
             </TabsList>
             <TabsContent value="overview"><OverviewTab strategy={s} /></TabsContent>
             <TabsContent value="performance"><PerformanceTab strategyId={s.id} /></TabsContent>
@@ -297,9 +293,9 @@ export function StrategyDetailPage() {
           <ConfirmDialog
             open={archiving}
             onOpenChange={setArchiving}
-            title="Archive strategy?"
-            description="It disappears from lists. History, backtests and logs are kept. Running tasks must be stopped first."
-            confirmLabel="Archive"
+            title={t("Archive strategy?")}
+            description={t("It disappears from lists. History, backtests and logs are kept. Running tasks must be stopped first.")}
+            confirmLabel={t("Archive")}
             loading={archive.isPending}
             onConfirm={() => archive.mutate()}
           />

@@ -5,16 +5,17 @@ import { Button } from "@/components/ui/button";
 import { Table, Td, Th } from "@/components/ui/primitives";
 import { dateTime, money, num, pct, signedMoney } from "@/lib/format";
 import type { Order, Position } from "@/types/api";
+import { t } from "@/lib/i18n";
 
 export function ConnectBrokerPrompt() {
   return (
     <EmptyState
       icon={PlugZap}
-      title="No broker account connected"
-      description="Account data comes straight from your broker. Add Alpaca paper keys in Settings to see equity, positions and orders here."
+      title={t("No broker account connected")}
+      description={t("Account data comes straight from your broker. Add Alpaca paper keys in Settings to see equity, positions and orders here.")}
       action={
         <Button asChild>
-          <Link to="/settings">Connect Alpaca</Link>
+          <Link to="/settings">{t("Connect Alpaca")}</Link>
         </Button>
       }
     />
@@ -22,17 +23,17 @@ export function ConnectBrokerPrompt() {
 }
 
 export function PositionsTable({ positions }: { positions: Position[] }) {
-  if (positions.length === 0) return <EmptyState title="No open positions" />;
+  if (positions.length === 0) return <EmptyState title={t("No open positions")} />;
   return (
     <Table>
       <thead>
         <tr>
-          <Th>Symbol</Th>
-          <Th>Side</Th>
-          <Th className="text-right">Qty</Th>
-          <Th className="text-right">Avg entry</Th>
-          <Th className="text-right">Price</Th>
-          <Th className="text-right">Market value</Th>
+          <Th>{t("Symbol")}</Th>
+          <Th>{t("Side")}</Th>
+          <Th className="text-right">{t("Qty")}</Th>
+          <Th className="text-right">{t("Avg entry")}</Th>
+          <Th className="text-right">{t("Price")}</Th>
+          <Th className="text-right">{t("Market value")}</Th>
           <Th className="text-right">Unrealized P&amp;L</Th>
         </tr>
       </thead>
@@ -63,14 +64,14 @@ export function OrdersTable({ orders, empty }: { orders: Order[]; empty: string 
     <Table>
       <thead>
         <tr>
-          <Th>Time</Th>
-          <Th>Symbol</Th>
-          <Th>Side</Th>
-          <Th>Type</Th>
-          <Th>Status</Th>
-          <Th className="text-right">Qty</Th>
-          <Th className="text-right">Filled</Th>
-          <Th className="text-right">Avg price</Th>
+          <Th>{t("Time")}</Th>
+          <Th>{t("Symbol")}</Th>
+          <Th>{t("Side")}</Th>
+          <Th>{t("Type")}</Th>
+          <Th>{t("Status")}</Th>
+          <Th className="text-right">{t("Qty")}</Th>
+          <Th className="text-right">{t("Filled")}</Th>
+          <Th className="text-right">{t("Avg price")}</Th>
         </tr>
       </thead>
       <tbody>
@@ -98,15 +99,15 @@ export function AllocationBar({ positions, cash }: { positions: Position[]; cash
     ...positions
       .filter((p) => (p.market_value ?? 0) > 0)
       .map((p) => ({ label: p.symbol, value: p.market_value ?? 0 })),
-    { label: "Cash", value: Math.max(cash, 0) },
+    { label: t("Cash"), value: Math.max(cash, 0) },
   ].sort((a, b) => b.value - a.value);
   const total = slices.reduce((s, x) => s + x.value, 0);
-  if (total <= 0) return <EmptyState title="Nothing to allocate" />;
+  if (total <= 0) return <EmptyState title={t("Nothing to allocate")} />;
   const top = slices.slice(0, 6);
   const rest = slices.slice(6).reduce((s, x) => s + x.value, 0);
-  if (rest > 0) top.push({ label: "Other", value: rest });
+  if (rest > 0) top.push({ label: t("Other"), value: rest });
   const color = (label: string, i: number) =>
-    label === "Cash" ? "var(--muted-foreground)" : `var(${SLICE_COLORS[i % SLICE_COLORS.length]})`;
+    label === t("Cash") ? "var(--muted-foreground)" : `var(${SLICE_COLORS[i % SLICE_COLORS.length]})`;
   return (
     <div className="grid gap-3">
       <div className="flex h-2.5 w-full gap-0.5 overflow-hidden rounded-full" aria-hidden>
@@ -124,9 +125,7 @@ export function AllocationBar({ positions, cash }: { positions: Position[]; cash
           </li>
         ))}
       </ul>
-      <p className="text-xs text-muted-foreground">
-        Long positions by market value. Short positions are not shown in this chart.
-      </p>
+      <p className="text-xs text-muted-foreground">{t("Long positions by market value. Short positions are not shown in this chart.")} </p>
     </div>
   );
 }

@@ -11,6 +11,7 @@ import {
 } from "lightweight-charts";
 import * as React from "react";
 import { money, pct } from "@/lib/format";
+import { intlLocale, t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import type { Point } from "@/types/api";
 
@@ -28,7 +29,7 @@ const RANGES = [
   { label: "3M", days: 91 },
   { label: "6M", days: 182 },
   { label: "1Y", days: 365 },
-  { label: "All", days: 0 },
+  { label: t("All"), days: 0 },
 ] as const;
 
 /** Resolve a CSS variable (possibly oklch) to rgba() via a 1px canvas, for the chart engine. */
@@ -108,7 +109,7 @@ export function TimeSeriesChart({
       rightPriceScale: { borderVisible: false, visible: !minimal },
       timeScale: { borderVisible: false, visible: !minimal },
       crosshair: { mode: CrosshairMode.Magnet },
-      localization: { locale: "en-US", priceFormatter: (p: number) => fmt(p) },
+      localization: { locale: intlLocale(), priceFormatter: (p: number) => fmt(p) },
       handleScale: true,
       handleScroll: true,
     });
@@ -197,7 +198,7 @@ export function TimeSeriesChart({
             options={RANGES.map((r) => r.label)}
             value={range}
             onChange={(label) => applyRange(label, RANGES.find((r) => r.label === label)!.days)}
-            ariaLabel="Time range"
+            ariaLabel={t("Time range")}
           />
         )}
       </div>

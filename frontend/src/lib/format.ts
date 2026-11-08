@@ -1,3 +1,5 @@
+import { intlLocale } from "./i18n";
+
 /** Formatting helpers. `null`/`undefined` always render as "N/A", never as 0. */
 
 export const NA = "N/A";
@@ -48,7 +50,7 @@ export function dateTime(iso: string | null | undefined): string {
   if (!iso) return NA;
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleString("en-US", {
+  return d.toLocaleString(intlLocale(), {
     year: "numeric",
     month: "short",
     day: "2-digit",

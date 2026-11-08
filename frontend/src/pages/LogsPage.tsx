@@ -9,6 +9,7 @@ import { useStrategies } from "@/hooks/queries";
 import { api, qs } from "@/services/api";
 import { cn } from "@/lib/utils";
 import type { LogEntry, LogSource } from "@/types/api";
+import { t } from "@/lib/i18n";
 
 const LEVEL_STYLE: Record<string, string> = {
   DEBUG: "text-muted-foreground",
@@ -54,26 +55,26 @@ export function LogsPage() {
     if (auto) bottom.current?.scrollIntoView({ block: "end" });
   }, [logs.data, auto]);
 
-  const groups: Record<string, string> = { system: "System", backtest: "Backtests", trading: "Paper trading" };
+  const groups: Record<string, string> = { system: t("System"), backtest: t("Backtests"), trading: t("Paper trading") };
 
   return (
     <>
       <PageHeader
-        title="Logs"
-        description="System, API, audit, backtest and strategy logs. Secrets are masked."
+        title={t("Logs")}
+        description={t("System, API, audit, backtest and strategy logs. Secrets are masked.")}
         actions={
           <>
             <Button variant="outline" onClick={() => setAuto((a) => !a)} aria-pressed={auto}>
               {auto ? <Pause /> : <Play />} {auto ? "Auto-refresh on" : "Auto-refresh off"}
             </Button>
             <Button asChild variant="outline">
-              <a href={`/api/logs/download${qs({ source })}`}><Download /> Download</a>
+              <a href={`/api/logs/download${qs({ source })}`}><Download /> {t("Download")}</a>
             </Button>
           </>
         }
       />
       <Card className="mb-3 grid gap-3 p-3 md:grid-cols-4">
-        <Field label="Strategy" htmlFor="ls">
+        <Field label={t("Strategy")} htmlFor="ls">
           <Select id="ls" value={strategyId} onChange={(e) => {
             const v = e.target.value;
             setParams(v ? { strategy: v } : {});
@@ -82,7 +83,7 @@ export function LogsPage() {
             {(strategies.data ?? []).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
           </Select>
         </Field>
-        <Field label="Source" htmlFor="lsrc">
+        <Field label={t("Source")} htmlFor="lsrc">
           <Select id="lsrc" value={source} onChange={(e) => setSource(e.target.value)}>
             {Object.entries(groups).map(([g, label]) => {
               const items = (sources.data ?? []).filter((s) => s.group === g);
@@ -94,16 +95,16 @@ export function LogsPage() {
             })}
           </Select>
         </Field>
-        <Field label="Minimum level" htmlFor="ll">
+        <Field label={t("Minimum level")} htmlFor="ll">
           <Select id="ll" value={level} onChange={(e) => setLevel(e.target.value)}>
-            <option value="">All</option>
+            <option value="">{t("All")}</option>
             {["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"].map((l) => <option key={l}>{l}</option>)}
           </Select>
         </Field>
-        <Field label="Search" htmlFor="lq">
+        <Field label={t("Search")} htmlFor="lq">
           <div className="relative">
             <Search className="absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
-            <Input id="lq" className="pl-8" value={search} maxLength={200} onChange={(e) => setSearch(e.target.value)} placeholder="Filter text" />
+            <Input id="lq" className="pl-8" value={search} maxLength={200} onChange={(e) => setSearch(e.target.value)} placeholder={t("Filter text")} />
           </div>
         </Field>
       </Card>
@@ -111,7 +112,7 @@ export function LogsPage() {
         <QueryBoundary query={logs} rows={10}>
           {(data) =>
             data.entries.length === 0 ? (
-              <EmptyState title="No log lines match" />
+              <EmptyState title={t("No log lines match")} />
             ) : (
               <div className="max-h-[65vh] overflow-auto bg-muted/30 p-3 font-mono text-xs leading-relaxed">
                 {data.entries.map((e, i) => (

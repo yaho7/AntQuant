@@ -10,6 +10,7 @@ import { useSettings } from "@/hooks/queries";
 import { bytes, dateTime, duration } from "@/lib/format";
 import { api } from "@/services/api";
 import type { AuditEntry, CompatReport, SettingsView, SystemInfo, UpdateInfo } from "@/types/api";
+import { t } from "@/lib/i18n";
 
 function BrokerCard({ view }: { view: SettingsView }) {
   const qc = useQueryClient();
@@ -33,36 +34,36 @@ function BrokerCard({ view }: { view: SettingsView }) {
     <Card>
       <CardHeader>
         <div>
-          <CardTitle>Alpaca connection</CardTitle>
-          <p className="mt-1 text-xs text-muted-foreground">Paper account only. Keys are encrypted at rest and never sent back to the browser.</p>
+          <CardTitle>{t("Alpaca connection")}</CardTitle>
+          <p className="mt-1 text-xs text-muted-foreground">{t("Paper account only. Keys are encrypted at rest and never sent back to the browser.")}</p>
         </div>
-        {a.configured ? <Badge tone="gain"><CheckCircle2 /> Configured</Badge> : <Badge><XCircle /> Not configured</Badge>}
+        {a.configured ? <Badge tone="gain"><CheckCircle2 /> {t("Configured")}</Badge> : <Badge><XCircle /> {t("Not configured")}</Badge>}
       </CardHeader>
       <CardContent className="grid gap-3">
         {a.configured && !replace ? (
           <>
-            <p className="text-sm">Key ID <span className="font-mono">{a.api_key_hint}</span> · Paper</p>
+            <p className="text-sm">{t("Key ID")} <span className="font-mono">{a.api_key_hint}</span> {t("· Paper")}</p>
             {test.data && (test.data.ok ? (
               <Alert tone="info"><CheckCircle2 className="text-gain" /> Connected to {test.data.account_id} ({test.data.status}).</Alert>
             ) : (
               <Alert tone="loss">{test.data.error}</Alert>
             ))}
             <div className="flex flex-wrap gap-2">
-              <Button variant="outline" size="sm" loading={test.isPending} onClick={() => test.mutate()}>Test connection</Button>
-              <Button variant="outline" size="sm" onClick={() => setReplace(true)}><KeyRound /> Replace keys</Button>
-              <Button variant="ghost" size="sm" onClick={() => setRemove(true)}><Trash2 /> Remove</Button>
+              <Button variant="outline" size="sm" loading={test.isPending} onClick={() => test.mutate()}>{t("Test connection")}</Button>
+              <Button variant="outline" size="sm" onClick={() => setReplace(true)}><KeyRound /> {t("Replace keys")}</Button>
+              <Button variant="ghost" size="sm" onClick={() => setRemove(true)}><Trash2 /> {t("Remove")}</Button>
             </div>
           </>
         ) : (
           <>
             <AlpacaKeysForm onSaved={() => { setReplace(false); toast.success("Alpaca keys saved"); }} />
-            {replace && <Button variant="ghost" size="sm" onClick={() => setReplace(false)}>Cancel</Button>}
+            {replace && <Button variant="ghost" size="sm" onClick={() => setReplace(false)}>{t("Cancel")}</Button>}
           </>
         )}
       </CardContent>
-      <ConfirmDialog open={remove} onOpenChange={setRemove} title="Remove Alpaca keys?"
-        description="Dashboard and trading will stop working until new keys are added. Running strategies must be stopped first."
-        confirmLabel="Remove keys" destructive loading={del.isPending} onConfirm={() => del.mutate()} />
+      <ConfirmDialog open={remove} onOpenChange={setRemove} title={t("Remove Alpaca keys?")}
+        description={t("Dashboard and trading will stop working until new keys are added. Running strategies must be stopped first.")}
+        confirmLabel={t("Remove keys")} destructive loading={del.isPending} onConfirm={() => del.mutate()} />
     </Card>
   );
 }
@@ -89,30 +90,30 @@ function BacktestSettingsCard({ view }: { view: SettingsView }) {
   });
   return (
     <Card>
-      <CardHeader><CardTitle>Backtest defaults</CardTitle></CardHeader>
+      <CardHeader><CardTitle>{t("Backtest defaults")}</CardTitle></CardHeader>
       <CardContent>
         <form className="grid gap-4 sm:grid-cols-2" onSubmit={(e) => { e.preventDefault(); save.mutate(); }}>
-          <Field label="Data source" htmlFor="sd">
+          <Field label={t("Data source")} htmlFor="sd">
             <Select id="sd" value={defaults.data_source} onChange={(e) => setDefaults({ ...defaults, data_source: e.target.value })}>
-              <option value="yahoo">Yahoo Finance</option>
-              <option value="alpaca">Alpaca Market Data</option>
+              <option value="yahoo">{t("Yahoo Finance")}</option>
+              <option value="alpaca">{t("Alpaca Market Data")}</option>
             </Select>
           </Field>
-          <Field label="Initial capital (USD)" htmlFor="sb">
+          <Field label={t("Initial capital (USD)")} htmlFor="sb">
             <Input id="sb" type="number" min={1} className="num" value={defaults.budget}
               onChange={(e) => setDefaults({ ...defaults, budget: Number(e.target.value) })} />
           </Field>
-          <Field label="Benchmark symbol" htmlFor="sbm">
+          <Field label={t("Benchmark symbol")} htmlFor="sbm">
             <Input id="sbm" value={defaults.benchmark} maxLength={16} onChange={(e) => setDefaults({ ...defaults, benchmark: e.target.value.toUpperCase() })} />
           </Field>
-          <Field label="Timeout (minutes)" htmlFor="st" hint="A backtest running longer is stopped and marked failed.">
+          <Field label={t("Timeout (minutes)")} htmlFor="st" hint={t("A backtest running longer is stopped and marked failed.")}>
             <Input id="st" type="number" min={5} max={1440} className="num" value={timeout} onChange={(e) => setTimeoutMin(e.target.value)} />
           </Field>
-          <Field label="Backtests at the same time" htmlFor="sc" hint="Others wait in the queue. Each uses several hundred MB of memory.">
+          <Field label={t("Backtests at the same time")} htmlFor="sc" hint={t("Others wait in the queue. Each uses several hundred MB of memory.")}>
             <Input id="sc" type="number" min={1} max={8} className="num" value={concurrency} onChange={(e) => setConcurrency(e.target.value)} />
           </Field>
           <div className="flex items-end justify-end sm:col-span-2">
-            <Button type="submit" loading={save.isPending}>Save</Button>
+            <Button type="submit" loading={save.isPending}>{t("Save")}</Button>
           </div>
         </form>
       </CardContent>
@@ -136,14 +137,14 @@ function PasswordCard() {
   });
   return (
     <Card>
-      <CardHeader><CardTitle>Password</CardTitle></CardHeader>
+      <CardHeader><CardTitle>{t("Password")}</CardTitle></CardHeader>
       <CardContent>
         <form className="grid gap-3" onSubmit={(e) => { e.preventDefault(); if (!mismatch) change.mutate(); }}>
-          <Field label="Current password" htmlFor="pc"><Input id="pc" type="password" autoComplete="current-password" value={form.current} onChange={(e) => setForm({ ...form, current: e.target.value })} required /></Field>
-          <Field label="New password" htmlFor="pn" hint="At least 10 characters."><Input id="pn" type="password" autoComplete="new-password" minLength={10} value={form.next} onChange={(e) => setForm({ ...form, next: e.target.value })} required /></Field>
-          <Field label="Confirm new password" htmlFor="pcf"><Input id="pcf" type="password" autoComplete="new-password" value={form.confirm} onChange={(e) => setForm({ ...form, confirm: e.target.value })} required /></Field>
-          {mismatch && <Alert tone="loss">Passwords do not match.</Alert>}
-          <div className="flex justify-end"><Button type="submit" disabled={mismatch} loading={change.isPending}>Change password</Button></div>
+          <Field label={t("Current password")} htmlFor="pc"><Input id="pc" type="password" autoComplete="current-password" value={form.current} onChange={(e) => setForm({ ...form, current: e.target.value })} required /></Field>
+          <Field label={t("New password")} htmlFor="pn" hint={t("At least 10 characters.")}><Input id="pn" type="password" autoComplete="new-password" minLength={10} value={form.next} onChange={(e) => setForm({ ...form, next: e.target.value })} required /></Field>
+          <Field label={t("Confirm new password")} htmlFor="pcf"><Input id="pcf" type="password" autoComplete="new-password" value={form.confirm} onChange={(e) => setForm({ ...form, confirm: e.target.value })} required /></Field>
+          {mismatch && <Alert tone="loss">{t("Passwords do not match.")}</Alert>}
+          <div className="flex justify-end"><Button type="submit" disabled={mismatch} loading={change.isPending}>{t("Change password")}</Button></div>
         </form>
       </CardContent>
     </Card>
@@ -158,43 +159,42 @@ function SystemCard() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>System</CardTitle>
+        <CardTitle>{t("System")}</CardTitle>
         <Button size="sm" variant="outline" loading={updates.isFetching} onClick={() => { setCheckUpdates(true); void updates.refetch(); }}>
-          <RefreshCw /> Check for updates
-        </Button>
+          <RefreshCw /> {t("Check for updates")} </Button>
       </CardHeader>
       <CardContent className="grid gap-4">
         <QueryBoundary query={info}>
           {(i) => (
             <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-1.5 text-sm">
-              <dt className="text-muted-foreground">LumiBot UI</dt><dd className="num">{i.ui_version}</dd>
-              <dt className="text-muted-foreground">LumiBot</dt>
+              <dt className="text-muted-foreground">{t("LumiBot UI")}</dt><dd className="num">{i.ui_version}</dd>
+              <dt className="text-muted-foreground">{t("LumiBot")}</dt>
               <dd className="num flex items-center gap-2">{i.lumibot_version ?? "not installed"}
                 {i.lumibot_version && i.verified_lumibot_versions.includes(i.lumibot_version)
-                  ? <Badge tone="gain">verified</Badge> : <Badge tone="warning">not verified</Badge>}
+                  ? <Badge tone="gain">{t("verified")}</Badge> : <Badge tone="warning">{t("not verified")}</Badge>}
               </dd>
-              <dt className="text-muted-foreground">Verified versions</dt><dd className="num">{i.verified_lumibot_versions.join(", ")}</dd>
-              <dt className="text-muted-foreground">Python</dt><dd className="num">{i.python}</dd>
-              <dt className="text-muted-foreground">Platform</dt><dd className="break-all text-xs">{i.platform}</dd>
-              <dt className="text-muted-foreground">Data folder</dt><dd className="break-all font-mono text-xs">{i.data_dir}</dd>
-              <dt className="text-muted-foreground">Disk free</dt><dd className="num">{bytes(i.disk_free_bytes)} of {bytes(i.disk_total_bytes)}</dd>
-              <dt className="text-muted-foreground">Tasks recorded</dt><dd className="num">{i.task_count}</dd>
-              <dt className="text-muted-foreground">Uptime</dt><dd className="num">{duration(i.uptime_seconds)}</dd>
+              <dt className="text-muted-foreground">{t("Verified versions")}</dt><dd className="num">{i.verified_lumibot_versions.join(", ")}</dd>
+              <dt className="text-muted-foreground">{t("Python")}</dt><dd className="num">{i.python}</dd>
+              <dt className="text-muted-foreground">{t("Platform")}</dt><dd className="break-all text-xs">{i.platform}</dd>
+              <dt className="text-muted-foreground">{t("Data folder")}</dt><dd className="break-all font-mono text-xs">{i.data_dir}</dd>
+              <dt className="text-muted-foreground">{t("Disk free")}</dt><dd className="num">{bytes(i.disk_free_bytes)} of {bytes(i.disk_total_bytes)}</dd>
+              <dt className="text-muted-foreground">{t("Tasks recorded")}</dt><dd className="num">{i.task_count}</dd>
+              <dt className="text-muted-foreground">{t("Uptime")}</dt><dd className="num">{duration(i.uptime_seconds)}</dd>
             </dl>
           )}
         </QueryBoundary>
         {updates.data && (
           <Alert tone="info">
             <div className="grid gap-1">
-              <span>LumiBot latest on PyPI: <b className="num">{updates.data.lumibot.latest ?? updates.data.lumibot.error}</b>
+              <span>{t("LumiBot latest on PyPI:")} <b className="num">{updates.data.lumibot.latest ?? updates.data.lumibot.error}</b>
                 {updates.data.lumibot.latest && updates.data.lumibot.latest !== updates.data.lumibot.installed && " (newer than installed; wait for a LumiBot UI release that verifies it)"}</span>
-              <span>LumiBot UI latest release: <b className="num">{updates.data.ui.latest ?? updates.data.ui.error}</b></span>
-              <span className="text-xs text-muted-foreground">Nothing is installed automatically. Update by pulling a newer image tag.</span>
+              <span>{t("LumiBot UI latest release:")} <b className="num">{updates.data.ui.latest ?? updates.data.ui.error}</b></span>
+              <span className="text-xs text-muted-foreground">{t("Nothing is installed automatically. Update by pulling a newer image tag.")}</span>
             </div>
           </Alert>
         )}
         <div>
-          <p className="mb-2 text-xs font-medium text-muted-foreground">LumiBot API compatibility</p>
+          <p className="mb-2 text-xs font-medium text-muted-foreground">{t("LumiBot API compatibility")}</p>
           <QueryBoundary query={compat}>
             {(c) => (
               <ul className="grid gap-1 text-sm">
@@ -219,20 +219,20 @@ function AuditCard() {
   const audit = useQuery({ queryKey: ["audit"], queryFn: () => api.get<AuditEntry[]>("/api/audit?limit=50"), refetchInterval: 15_000 });
   return (
     <Card>
-      <CardHeader><CardTitle>Audit log</CardTitle></CardHeader>
+      <CardHeader><CardTitle>{t("Audit log")}</CardTitle></CardHeader>
       <CardContent className="px-0">
         <QueryBoundary query={audit}>
           {(rows) => (
             <div className="max-h-96 overflow-auto">
               <Table>
-                <thead><tr><Th>Time</Th><Th>Action</Th><Th>Target</Th><Th>Result</Th><Th>IP</Th></tr></thead>
+                <thead><tr><Th>{t("Time")}</Th><Th>{t("Action")}</Th><Th>{t("Target")}</Th><Th>{t("Result")}</Th><Th>{t("IP")}</Th></tr></thead>
                 <tbody>
                   {rows.map((r, i) => (
                     <tr key={i}>
                       <Td className="num text-xs">{dateTime(r.time)}</Td>
                       <Td className="font-mono text-xs">{r.action}</Td>
                       <Td className="max-w-48 truncate text-xs" title={r.target}>{r.target}</Td>
-                      <Td>{r.success ? <Badge tone="gain">ok</Badge> : <Badge tone="loss">refused</Badge>}</Td>
+                      <Td>{r.success ? <Badge tone="gain">{t("ok")}</Badge> : <Badge tone="loss">{t("refused")}</Badge>}</Td>
                       <Td className="num text-xs">{r.ip}</Td>
                     </tr>
                   ))}
@@ -250,7 +250,7 @@ export function SettingsPage() {
   const settings = useSettings();
   return (
     <>
-      <PageHeader title="Settings" />
+      <PageHeader title={t("Settings")} />
       <QueryBoundary query={settings} rows={6}>
         {(view) => (
           <div className="grid gap-4 lg:grid-cols-2">
@@ -262,12 +262,8 @@ export function SettingsPage() {
             <div className="grid content-start gap-4">
               <SystemCard />
               <Card>
-                <CardHeader><CardTitle>Logging</CardTitle></CardHeader>
-                <CardContent className="text-sm text-muted-foreground">
-                  System log: <span className="font-mono text-xs">data/logs/system.log</span>, rotated at 5 MB, 5 files kept.
-                  Each task writes its own log in <span className="font-mono text-xs">data/tasks/&lt;id&gt;/task.log</span>.
-                  Change the level with the <span className="font-mono text-xs">LUMIBOT_UI_LOG_LEVEL</span> environment variable.
-                </CardContent>
+                <CardHeader><CardTitle>{t("Logging")}</CardTitle></CardHeader>
+                <CardContent className="text-sm text-muted-foreground">{t("System log: data/logs/system.log, rotated at 5 MB, 5 files kept. Each task writes its own log in data/tasks/<id>/task.log. Set the level with the LUMIBOT_UI_LOG_LEVEL environment variable.")}</CardContent>
               </Card>
               <AuditCard />
             </div>

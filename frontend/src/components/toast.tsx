@@ -1,6 +1,7 @@
 import { CheckCircle2, X, XCircle } from "lucide-react";
 import * as React from "react";
 import { cn } from "@/lib/utils";
+import { t } from "@/lib/i18n";
 
 interface Toast {
   id: number;
@@ -34,23 +35,23 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         className="fixed bottom-4 right-4 z-[60] flex w-[min(24rem,calc(100%-2rem))] flex-col gap-2"
         aria-live="polite"
       >
-        {toasts.map((t) => (
+        {toasts.map((item) => (
           <div
-            key={t.id}
+            key={item.id}
             className={cn(
               "flex items-start gap-2 rounded-lg border bg-card p-3 text-sm shadow-lg",
-              t.tone === "error" && "border-loss/40",
+              item.tone === "error" && "border-loss/40",
             )}
           >
-            {t.tone === "success" ? (
+            {item.tone === "success" ? (
               <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-gain" />
             ) : (
               <XCircle className="mt-0.5 size-4 shrink-0 text-loss" />
             )}
-            <span className="flex-1 break-words">{t.message}</span>
+            <span className="flex-1 break-words">{item.message}</span>
             <button
-              aria-label="Dismiss"
-              onClick={() => setToasts((all) => all.filter((x) => x.id !== t.id))}
+              aria-label={t("Dismiss")}
+              onClick={() => setToasts((all) => all.filter((x) => x.id !== item.id))}
             >
               <X className="size-4 opacity-60" />
             </button>

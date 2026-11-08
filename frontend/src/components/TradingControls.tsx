@@ -6,6 +6,7 @@ import { useToast } from "@/components/toast";
 import { Button } from "@/components/ui/button";
 import { api } from "@/services/api";
 import type { Task } from "@/types/api";
+import { t } from "@/lib/i18n";
 
 /**
  * Start / Pause / Resume / Stop for one strategy. Stop never liquidates;
@@ -65,18 +66,16 @@ export function TradingControls({
         onClick={() => start.mutate()}
         loading={start.isPending}
         disabled={!brokerConnected}
-        title={brokerConnected ? "Start paper trading" : "Connect Alpaca in Settings first"}
+        title={brokerConnected ? t("Start paper trading") : t("Connect Alpaca in Settings first")}
       >
-        <Play /> Start paper
-      </Button>
+        <Play /> {t("Start paper")} </Button>
     );
   }
   return (
     <div className="flex flex-wrap gap-2">
       {task.paused ? (
         <Button size={size} variant="outline" loading={pause.isPending} onClick={() => pause.mutate(false)}>
-          <Play /> Resume
-        </Button>
+          <Play /> {t("Resume")} </Button>
       ) : (
         <Button
           size={size}
@@ -84,20 +83,18 @@ export function TradingControls({
           loading={pause.isPending}
           disabled={task.status === "pending"}
           onClick={() => pause.mutate(true)}
-          title="Block new or larger positions. Exits and broker-side stops keep working."
+          title={t("Block new or larger positions. Exits and broker-side stops keep working.")}
         >
-          <Pause /> Pause
-        </Button>
+          <Pause /> {t("Pause")} </Button>
       )}
       <Button size={size} variant="outline" onClick={() => setConfirmStop(true)}>
-        <Square /> Stop
-      </Button>
+        <Square /> {t("Stop")} </Button>
       <ConfirmDialog
         open={confirmStop}
         onOpenChange={setConfirmStop}
-        title="Stop this strategy?"
-        description="The strategy process stops. Open positions and resting broker orders are NOT closed. Use Liquidate on the Trading page to close positions."
-        confirmLabel="Stop strategy"
+        title={t("Stop this strategy?")}
+        description={t("The strategy process stops. Open positions and resting broker orders are NOT closed. Use Liquidate on the Trading page to close positions.")}
+        confirmLabel={t("Stop strategy")}
         loading={stop.isPending}
         onConfirm={() => stop.mutate()}
       />

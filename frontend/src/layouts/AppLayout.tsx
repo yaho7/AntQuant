@@ -2,6 +2,7 @@ import {
   Activity,
   CandlestickChart,
   Eye,
+  Languages,
   EyeOff,
   FlaskConical,
   LayoutDashboard,
@@ -17,16 +18,16 @@ import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { usePrivacy } from "@/hooks/usePrivacy";
 import { type Theme, useTheme } from "@/hooks/useTheme";
-import { t } from "@/lib/i18n";
+import { getLocale, setLocale, t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 const NAV = [
-  { to: "/", label: t("nav.dashboard"), icon: LayoutDashboard, end: true },
-  { to: "/strategies", label: t("nav.strategies"), icon: Workflow },
-  { to: "/backtesting", label: t("nav.backtesting"), icon: FlaskConical },
-  { to: "/trading", label: t("nav.trading"), icon: CandlestickChart },
-  { to: "/logs", label: t("nav.logs"), icon: ScrollText },
-  { to: "/settings", label: t("nav.settings"), icon: Settings },
+  { to: "/", label: t("Dashboard"), icon: LayoutDashboard, end: true },
+  { to: "/strategies", label: t("Strategies"), icon: Workflow },
+  { to: "/backtesting", label: t("Backtesting"), icon: FlaskConical },
+  { to: "/trading", label: t("Trading"), icon: CandlestickChart },
+  { to: "/logs", label: t("Logs"), icon: ScrollText },
+  { to: "/settings", label: t("Settings"), icon: Settings },
 ];
 
 const NEXT_THEME: Record<Theme, Theme> = { light: "dark", dark: "system", system: "light" };
@@ -65,10 +66,10 @@ export function AppLayout() {
   return (
     <div className="flex min-h-full">
       <aside className="sticky top-0 hidden h-screen w-[76px] shrink-0 flex-col items-center gap-1 py-4 md:flex">
-        <div className="mb-5 flex size-10 items-center justify-center rounded-xl bg-primary text-primary-foreground" title="LumiBot UI">
+        <div className="mb-5 flex size-10 items-center justify-center rounded-xl bg-primary text-primary-foreground" title={t("LumiBot UI")}>
           <Activity className="size-5" />
         </div>
-        <nav className="flex flex-col items-center gap-1" aria-label="Main">
+        <nav className="flex flex-col items-center gap-1" aria-label={t("Main")}>
           {NAV.map(({ to, label, icon: Icon, end }) => (
             <NavLink
               key={to}
@@ -99,13 +100,16 @@ export function AppLayout() {
           ))}
         </nav>
         <div className="mt-auto flex flex-col items-center gap-1">
-          <RailButton label={privacy ? "Show amounts" : "Hide amounts"} onClick={togglePrivacy} pressed={privacy}>
+          <RailButton label={privacy ? t("Show amounts") : t("Hide amounts")} onClick={togglePrivacy} pressed={privacy}>
             {privacy ? <EyeOff /> : <Eye />}
+          </RailButton>
+          <RailButton label={getLocale() === "zh" ? "English" : "中文"} onClick={() => setLocale(getLocale() === "zh" ? "en" : "zh")}>
+            <Languages />
           </RailButton>
           <RailButton label={`Theme: ${theme}`} onClick={() => setTheme(NEXT_THEME[theme])}>
             <ThemeIcon />
           </RailButton>
-          <RailButton label={`Sign out${me ? ` (${me.username})` : ""}`} onClick={() => void logout()}>
+          <RailButton label={`${t("Sign out")}${me ? ` (${me.username})` : ""}`} onClick={() => void logout()}>
             <LogOut />
           </RailButton>
         </div>
@@ -116,15 +120,18 @@ export function AppLayout() {
           <div className="flex size-7 items-center justify-center rounded-lg bg-primary text-primary-foreground">
             <Activity className="size-4" />
           </div>
-          <span className="text-sm font-semibold">LumiBot UI</span>
+          <span className="text-sm font-semibold">{t("LumiBot UI")}</span>
           <div className="ml-auto flex">
-            <RailButton label={privacy ? "Show amounts" : "Hide amounts"} onClick={togglePrivacy} pressed={privacy}>
+            <RailButton label={privacy ? t("Show amounts") : t("Hide amounts")} onClick={togglePrivacy} pressed={privacy}>
               {privacy ? <EyeOff /> : <Eye />}
             </RailButton>
-            <RailButton label={`Theme: ${theme}`} onClick={() => setTheme(NEXT_THEME[theme])}>
+            <RailButton label={getLocale() === "zh" ? "English" : "中文"} onClick={() => setLocale(getLocale() === "zh" ? "en" : "zh")}>
+            <Languages />
+          </RailButton>
+          <RailButton label={`Theme: ${theme}`} onClick={() => setTheme(NEXT_THEME[theme])}>
               <ThemeIcon />
             </RailButton>
-            <RailButton label="Sign out" onClick={() => void logout()}>
+            <RailButton label={t("Sign out")} onClick={() => void logout()}>
               <LogOut />
             </RailButton>
           </div>
@@ -136,7 +143,7 @@ export function AppLayout() {
 
       <nav
         className="fixed inset-x-3 bottom-3 z-40 flex justify-around rounded-2xl border bg-card/95 p-1.5 shadow-lg backdrop-blur md:hidden"
-        aria-label="Main"
+        aria-label={t("Main")}
       >
         {NAV.map(({ to, label, icon: Icon, end }) => (
           <NavLink

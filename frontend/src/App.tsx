@@ -11,6 +11,7 @@ import { SettingsPage } from "@/pages/SettingsPage";
 import { StrategiesPage } from "@/pages/StrategiesPage";
 import { StrategyDetailPage } from "@/pages/StrategyDetailPage";
 import { TradingPage } from "@/pages/TradingPage";
+import { t } from "@/lib/i18n";
 
 export function App() {
   const { status, loading, error } = useAuth();
@@ -21,7 +22,7 @@ export function App() {
       </div>
     );
   }
-  if (error || !status) return <ErrorState error={error ?? "Server not reachable"} onRetry={() => location.reload()} />;
+  if (error || !status) return <ErrorState error={error ?? t("Server not reachable")} onRetry={() => location.reload()} />;
   if (status.setup_required) return <SetupPage />;
   if (!status.authenticated) return <LoginPage />;
   return (

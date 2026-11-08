@@ -1,32 +1,55 @@
 /**
- * Minimal i18n: English is the default and only shipped language. To add one,
- * add a dictionary with the same keys and register it in `dictionaries`.
+ * i18n. English text is the message key; other languages map it to a
+ * translation and fall back to English when a string is missing.
+ *
+ *   t("Start backtest")                 -> "开始回测" in Chinese
+ *   t("Stopped {n} runs", { n: 2 })     -> placeholders are replaced
+ *
+ * To add a language, add a dictionary in `./locales/` and list it in LOCALES.
  */
-const en = {
-  "nav.dashboard": "Dashboard",
-  "nav.strategies": "Strategies",
-  "nav.backtesting": "Backtesting",
-  "nav.trading": "Trading",
-  "nav.logs": "Logs",
-  "nav.settings": "Settings",
-  "common.na": "N/A",
-  "common.retry": "Retry",
-  "common.cancel": "Cancel",
-  "common.save": "Save",
-  "common.paper": "Paper",
-  "common.live": "Live",
-} as const;
+import { zh } from "./locales/zh";
 
-export type MessageKey = keyof typeof en;
+export type Locale = "en" | "zh";
 
-const dictionaries: Record<string, Partial<Record<MessageKey, string>>> = { en };
+export const LOCALES: { id: Locale; label: string; intl: string }[] = [
+  { id: "en", label: "English", intl: "en-US" },
+  { id: "zh", label: "中文", intl: "zh-CN" },
+];
 
-let locale = "en";
+const dictionaries: Record<Locale, Record<string, string>> = { en: {}, zh };
+const KEY = "lumibot-ui-locale";
 
-export function setLocale(next: string): void {
-  if (dictionaries[next]) locale = next;
+function initial(): Locale {
+  const saved = typeof localStorage !== "undefined" ? localStorage.getItem(KEY) : null;
+  if (saved === "en" || saved === "zh") return saved;
+  return "en"; // English by default until the user picks a language
 }
 
-export function t(key: MessageKey): string {
-  return dictionaries[locale]?.[key] ?? en[key];
+let locale: Locale = initial();
+
+export function getLocale(): Locale {
+  return locale;
+}
+
+/** Intl locale for dates and chart axes. */
+export function intlLocale(): string {
+  return LOCALES.find((l) => l.id === locale)?.intl ?? "en-US";
+}
+
+/** Switch language. The page reloads so every string is rendered again. */
+export function setLocale(next: Locale): void {
+  localStorage.setItem(KEY, next);
+  if (next !== locale) location.reload();
+}
+
+export function t(text: string, vars?: Record<string, string | number>): string {
+  let out = dictionaries[locale][text] ?? text;
+  if (vars) {
+    for (const [k, v] of Object.entries(vars)) out = out.replaceAll(`{${k}}`, String(v));
+  }
+  return out;
+}
+
+if (typeof document !== "undefined") {
+  document.documentElement.lang = locale === "zh" ? "zh-CN" : "en";
 }

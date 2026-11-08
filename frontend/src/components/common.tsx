@@ -18,6 +18,7 @@ import { Badge, Card, Input, Skeleton } from "@/components/ui/primitives";
 import { direction, NA } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { TaskStatus } from "@/types/api";
+import { t } from "@/lib/i18n";
 
 export function PageHeader({
   title,
@@ -41,7 +42,7 @@ export function PageHeader({
 
 export function LoadingState({ rows = 3, className }: { rows?: number; className?: string }) {
   return (
-    <div className={cn("grid gap-2", className)} aria-busy="true" aria-label="Loading">
+    <div className={cn("grid gap-2", className)} aria-busy="true" aria-label={t("Loading")}>
       {Array.from({ length: rows }, (_, i) => (
         <Skeleton key={i} className="h-8 w-full" />
       ))}
@@ -71,16 +72,14 @@ export function EmptyState({
 }
 
 export function ErrorState({ error, onRetry }: { error: unknown; onRetry?: () => void }) {
-  const message = error instanceof Error ? error.message : String(error ?? "Unknown error");
+  const message = error instanceof Error ? error.message : String(error ?? t("Unknown error"));
   return (
     <div role="alert" className="flex flex-col items-center gap-2 px-4 py-8 text-center">
       <AlertTriangle className="size-7 text-loss" />
-      <p className="text-sm font-medium">Something went wrong</p>
+      <p className="text-sm font-medium">{t("Something went wrong")}</p>
       <p className="max-w-lg break-words text-sm text-muted-foreground">{message}</p>
       {onRetry && (
-        <Button variant="outline" size="sm" onClick={onRetry} className="mt-2">
-          Retry
-        </Button>
+        <Button variant="outline" size="sm" onClick={onRetry} className="mt-2">{t("Retry")} </Button>
       )}
     </div>
   );
@@ -177,23 +176,22 @@ export function StatusBadge({ status, paused }: { status: TaskStatus; paused?: b
   if (paused && (status === "running" || status === "starting")) {
     return (
       <Badge tone="warning">
-        <PauseCircle /> Paused
-      </Badge>
+        <PauseCircle /> {t("Paused")} </Badge>
     );
   }
   const Icon = statusIcon[status];
   return (
     <Badge tone={statusTone[status]}>
       <Icon className={cn((status === "running" || status === "starting") && "animate-spin")} />
-      {status[0]!.toUpperCase() + status.slice(1)}
+      {t(status[0]!.toUpperCase() + status.slice(1))}
     </Badge>
   );
 }
 
 export function ModeBadge({ mode }: { mode: string }) {
-  if (mode === "live") return <Badge tone="loss">LIVE</Badge>;
-  if (mode === "paper") return <Badge tone="info">Paper</Badge>;
-  return <Badge>Backtest</Badge>;
+  if (mode === "live") return <Badge tone="loss">{t("LIVE")}</Badge>;
+  if (mode === "paper") return <Badge tone="info">{t("Paper")}</Badge>;
+  return <Badge>{t("Backtest")}</Badge>;
 }
 
 /** Confirmation dialog. With `phrase`, the user must type it to enable the button. */
@@ -231,10 +229,7 @@ export function ConfirmDialog({
         {children}
         {phrase && (
           <div className="grid gap-1.5">
-            <label className="text-xs text-muted-foreground" htmlFor="confirm-phrase">
-              Type <span className="font-mono font-semibold text-foreground">{phrase}</span> to
-              confirm
-            </label>
+            <label className="text-xs text-muted-foreground" htmlFor="confirm-phrase">{t("Type {phrase} to confirm", { phrase })}</label>
             <Input
               id="confirm-phrase"
               autoComplete="off"
@@ -244,9 +239,7 @@ export function ConfirmDialog({
           </div>
         )}
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>{t("Cancel")} </Button>
           <Button
             variant={destructive ? "destructive" : "default"}
             disabled={!ok}

@@ -1,6 +1,7 @@
 import * as React from "react";
 import { Textarea } from "@/components/ui/primitives";
 import type { Params } from "@/types/api";
+import { t } from "@/lib/i18n";
 
 /** JSON editor for strategy parameters. Reports the parsed object or an error. */
 export function ParamsEditor({
@@ -44,7 +45,7 @@ export function ParamsEditor({
             last.current = parsed;
             onChange(parsed, null);
           } catch (err) {
-            const msg = err instanceof Error ? err.message : "Invalid JSON";
+            const msg = err instanceof Error ? err.message : t("Invalid JSON");
             setError(msg);
             onChange(null, msg);
           }
@@ -53,8 +54,7 @@ export function ParamsEditor({
       {error ? (
         <p className="text-xs text-loss">{error}</p>
       ) : (
-        <p className="text-xs text-muted-foreground">
-          JSON object passed to the strategy as <code>self.parameters</code>.
+        <p className="text-xs text-muted-foreground">{t("JSON object passed to the strategy as self.parameters.")}
         </p>
       )}
     </div>

@@ -4,6 +4,7 @@ import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { Alert, Field, Input } from "@/components/ui/primitives";
 import { api } from "@/services/api";
+import { t } from "@/lib/i18n";
 
 interface TestResult {
   ok: boolean;
@@ -39,11 +40,11 @@ export function AlpacaKeysForm({ onSaved }: { onSaved?: () => void }) {
         save.mutate();
       }}
     >
-      <Field label="API key ID" htmlFor="ak">
+      <Field label={t("API key ID")} htmlFor="ak">
         <Input id="ak" autoComplete="off" spellCheck={false} className="font-mono"
           value={key} onChange={(e) => setKey(e.target.value)} placeholder="PK…" />
       </Field>
-      <Field label="API secret key" htmlFor="as">
+      <Field label={t("API secret key")} htmlFor="as">
         <Input id="as" type="password" autoComplete="off" className="font-mono"
           value={secret} onChange={(e) => setSecret(e.target.value)} />
       </Field>
@@ -60,11 +61,8 @@ export function AlpacaKeysForm({ onSaved }: { onSaved?: () => void }) {
       <div className="flex flex-wrap gap-2">
         <Button type="button" variant="outline" disabled={!filled} loading={test.isPending}
           onClick={() => test.mutate()}>
-          <PlugZap /> Test connection
-        </Button>
-        <Button type="submit" disabled={!filled} loading={save.isPending}>
-          Save keys
-        </Button>
+          <PlugZap /> {t("Test connection")} </Button>
+        <Button type="submit" disabled={!filled} loading={save.isPending}>{t("Save keys")} </Button>
       </div>
     </form>
   );

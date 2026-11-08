@@ -27,13 +27,14 @@ import {
   useSystemStatus,
 } from "@/hooks/queries";
 import { between, duration, money, pct, signedMoney } from "@/lib/format";
+import { t } from "@/lib/i18n";
 
 const PERIODS = [
-  { v: "1W", label: "past week", short: "1W" },
-  { v: "1M", label: "past month", short: "1M" },
-  { v: "3M", label: "past 3 months", short: "3M" },
-  { v: "1A", label: "past year", short: "1Y" },
-  { v: "all", label: "all time", short: "All" },
+  { v: "1W", label: t("past week"), short: "1W" },
+  { v: "1M", label: t("past month"), short: "1M" },
+  { v: "3M", label: t("past 3 months"), short: "3M" },
+  { v: "1A", label: t("past year"), short: "1Y" },
+  { v: "all", label: "all time", short: t("All") },
 ];
 
 export function DashboardPage() {
@@ -51,7 +52,7 @@ export function DashboardPage() {
   const equitySeries = React.useMemo(
     () => [
       {
-        name: "Equity",
+        name: t("Equity"),
         color: "--chart-1",
         data: (history.data ?? []).map((p) => ({ time: p.time, value: p.equity })),
       },
@@ -70,18 +71,18 @@ export function DashboardPage() {
         <ErrorState error={summary.error} onRetry={() => summary.refetch()} />
       ) : !summary.data?.connected ? (
         <>
-          <PageHeader title="Dashboard" description="Your broker account at a glance." />
+          <PageHeader title={t("Dashboard")} description={t("Your broker account at a glance.")} />
           <Card className="mb-8">
             <ConnectBrokerPrompt />
           </Card>
         </>
       ) : summary.data.error ? (
         <>
-          <PageHeader title="Dashboard" />
+          <PageHeader title={t("Dashboard")} />
           <Alert tone="loss" className="mb-8">
             <AlertTriangle />
             <div>
-              <p className="font-medium">Could not load the Alpaca account</p>
+              <p className="font-medium">{t("Could not load the Alpaca account")}</p>
               <p className="text-muted-foreground">{summary.data.error}</p>
             </div>
           </Alert>
@@ -89,7 +90,7 @@ export function DashboardPage() {
       ) : null}
 
       {account && (
-        <section className="mb-10" aria-label="Account overview">
+        <section className="mb-10" aria-label={t("Account overview")}>
           <p className="mb-1 flex items-center gap-2 text-xs text-muted-foreground">
             Alpaca {account.paper ? "paper" : "LIVE"} account · {account.account_id}
             <Badge tone="info">{account.paper ? "Paper" : "LIVE"}</Badge>
@@ -101,7 +102,7 @@ export function DashboardPage() {
             <span className="flex items-center gap-1.5">
               <Delta value={account.daily_pnl}><span className="sensitive">{signedMoney(account.daily_pnl)}</span></Delta>
               <Delta value={account.daily_pnl_pct}>{pct(account.daily_pnl_pct, 2, true)}</Delta>
-              <span className="text-muted-foreground">today</span>
+              <span className="text-muted-foreground">{t("today")}</span>
             </span>
             <span className="h-4 border-e" aria-hidden />
             <span className="flex items-center gap-1.5">
@@ -111,8 +112,7 @@ export function DashboardPage() {
           </div>
           {account.trading_blocked && (
             <Alert tone="warning" className="mt-4">
-              <AlertTriangle /> Alpaca reports trading is blocked on this account.
-            </Alert>
+              <AlertTriangle /> {t("Alpaca reports trading is blocked on this account.")} </Alert>
           )}
 
           <div className="-mx-4 mt-6 sm:-mx-8">
@@ -121,7 +121,7 @@ export function DashboardPage() {
             ) : history.error ? (
               <ErrorState error={history.error} onRetry={() => history.refetch()} />
             ) : equitySeries[0]!.data.length < 2 ? (
-              <EmptyState title="Not enough history yet" description="Alpaca has no portfolio history for this period." />
+              <EmptyState title={t("Not enough history yet")} description={t("Alpaca has no portfolio history for this period.")} />
             ) : (
               <TimeSeriesChart series={equitySeries} showRanges={false} minimal height={240} />
             )}
@@ -132,16 +132,16 @@ export function DashboardPage() {
               labels={Object.fromEntries(PERIODS.map((p) => [p.v, p.short]))}
               value={period}
               onChange={setPeriod}
-              ariaLabel="History period"
+              ariaLabel={t("History period")}
             />
           </div>
 
           <div className="mt-8 grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <StatCard label="Cash balance" value={money(account.cash, account.currency)} />
-            <StatCard label="Buying power" value={money(account.buying_power, account.currency)} />
-            <StatCard label="Long market value" value={money(account.long_market_value, account.currency)} />
+            <StatCard label={t("Cash balance")} value={money(account.cash, account.currency)} />
+            <StatCard label={t("Buying power")} value={money(account.buying_power, account.currency)} />
+            <StatCard label={t("Long market value")} value={money(account.long_market_value, account.currency)} />
             <StatCard
-              label="Daily P&L"
+              label={t("Daily P&L")}
               value={<Delta value={account.daily_pnl}>{signedMoney(account.daily_pnl)}</Delta>}
             />
           </div>
@@ -152,7 +152,7 @@ export function DashboardPage() {
         <div className="grid content-start gap-6">
         {connected && (
           <Card>
-            <CardHeader><CardTitle>Holdings</CardTitle></CardHeader>
+            <CardHeader><CardTitle>{t("Holdings")}</CardTitle></CardHeader>
             <CardContent className="px-0">
               {positions.data ? <PositionsTable positions={positions.data} /> : <LoadingState />}
             </CardContent>
@@ -160,18 +160,18 @@ export function DashboardPage() {
         )}
         <Card>
           <CardHeader>
-            <CardTitle>Recent trades</CardTitle>
-            {connected && <Link className="text-xs text-primary" to="/trading">View all</Link>}
+            <CardTitle>{t("Recent trades")}</CardTitle>
+            {connected && <Link className="text-xs text-primary" to="/trading">{t("View all")}</Link>}
           </CardHeader>
           <CardContent className="px-0">
             {!connected ? (
-              <EmptyState title="Connect a broker to see trades" />
+              <EmptyState title={t("Connect a broker to see trades")} />
             ) : orders.isLoading ? (
               <LoadingState />
             ) : orders.error ? (
               <ErrorState error={orders.error} onRetry={() => orders.refetch()} />
             ) : (
-              <OrdersTable orders={(orders.data ?? []).filter((o) => o.filled_quantity)} empty="No filled orders yet" />
+              <OrdersTable orders={(orders.data ?? []).filter((o) => o.filled_quantity)} empty={t("No filled orders yet")} />
             )}
           </CardContent>
         </Card>
@@ -181,7 +181,7 @@ export function DashboardPage() {
           {account && (
             <Card>
               <CardHeader>
-                <CardTitle>Allocation</CardTitle>
+                <CardTitle>{t("Allocation")}</CardTitle>
               </CardHeader>
               <CardContent>
                 {positions.isLoading ? (
@@ -196,14 +196,14 @@ export function DashboardPage() {
           )}
           <Card>
             <CardHeader>
-              <CardTitle>Active strategies</CardTitle>
-              <Link className="text-xs text-primary" to="/strategies">Manage</Link>
+              <CardTitle>{t("Active strategies")}</CardTitle>
+              <Link className="text-xs text-primary" to="/strategies">{t("Manage")}</Link>
             </CardHeader>
             <CardContent>
               {strategies.isLoading ? (
                 <LoadingState rows={2} />
               ) : activeStrategies.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No strategy is trading.</p>
+                <p className="text-sm text-muted-foreground">{t("No strategy is trading.")}</p>
               ) : (
                 <ul className="grid gap-2">
                   {activeStrategies.map((s) => (
@@ -221,13 +221,13 @@ export function DashboardPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Running tasks</CardTitle>
+              <CardTitle>{t("Running tasks")}</CardTitle>
             </CardHeader>
             <CardContent>
               {status.isLoading ? (
                 <LoadingState rows={2} />
               ) : !status.data?.active_tasks.length ? (
-                <p className="text-sm text-muted-foreground">Nothing running.</p>
+                <p className="text-sm text-muted-foreground">{t("Nothing running.")}</p>
               ) : (
                 <ul className="grid gap-2">
                   {status.data.active_tasks.map((task) => (
@@ -242,7 +242,7 @@ export function DashboardPage() {
                         <StatusBadge status={task.status} paused={task.paused} />
                       </div>
                       <span className="num text-xs text-muted-foreground">
-                        {task.kind === "backtest" ? "Backtest" : "Paper trading"} ·{" "}
+                        {task.kind === "backtest" ? t("Backtest") : t("Paper trading")} ·{" "}
                         {duration(between(task.started_at, null))}
                         {task.progress != null && ` · ${task.progress.toFixed(0)}%`}
                       </span>
@@ -255,27 +255,27 @@ export function DashboardPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>System status</CardTitle>
+              <CardTitle>{t("System status")}</CardTitle>
             </CardHeader>
             <CardContent>
               {status.data ? (
                 <dl className="grid grid-cols-2 gap-y-1.5 text-sm">
-                  <dt className="text-muted-foreground">Broker</dt>
+                  <dt className="text-muted-foreground">{t("Broker")}</dt>
                   <dd className="flex items-center gap-1">
                     {status.data.broker.configured ? (
-                      <><CheckCircle2 className="size-3.5 text-gain" /> Alpaca paper</>
+                      <><CheckCircle2 className="size-3.5 text-gain" /> {t("Alpaca paper")}</>
                     ) : (
-                      <><CircleSlash className="size-3.5 text-muted-foreground" /> Not connected</>
+                      <><CircleSlash className="size-3.5 text-muted-foreground" /> {t("Not connected")}</>
                     )}
                   </dd>
-                  <dt className="text-muted-foreground">LumiBot</dt>
+                  <dt className="text-muted-foreground">{t("LumiBot")}</dt>
                   <dd className="num flex items-center gap-1">
                     {status.data.lumibot_version ?? "missing"}
-                    {!status.data.lumibot_verified && <Badge tone="warning">unverified</Badge>}
+                    {!status.data.lumibot_verified && <Badge tone="warning">{t("unverified")}</Badge>}
                   </dd>
-                  <dt className="text-muted-foreground">UI version</dt>
+                  <dt className="text-muted-foreground">{t("UI version")}</dt>
                   <dd className="num">{status.data.ui_version}</dd>
-                  <dt className="text-muted-foreground">Uptime</dt>
+                  <dt className="text-muted-foreground">{t("Uptime")}</dt>
                   <dd className="num">{duration(status.data.uptime_seconds)}</dd>
                 </dl>
               ) : status.error ? (

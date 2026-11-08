@@ -3,6 +3,8 @@
  * requests carry the CSRF token returned by /api/auth/me.
  */
 
+import { t } from "@/lib/i18n";
+
 export class ApiError extends Error {
   constructor(
     public status: number,
@@ -60,7 +62,7 @@ export async function request<T>(
       body: body === undefined ? undefined : isForm ? body : JSON.stringify(body),
     });
   } catch {
-    throw new ApiError(0, "Cannot reach the LumiBot UI server.");
+    throw new ApiError(0, t("Cannot reach the LumiBot UI server."));
   }
   if (res.status === 401 && !path.startsWith("/api/auth/")) onUnauthorized?.();
   if (!res.ok) throw new ApiError(res.status, await parseError(res));

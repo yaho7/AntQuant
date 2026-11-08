@@ -11,6 +11,7 @@ import { useBacktests, useStrategies } from "@/hooks/queries";
 import { between, dateTime, duration, num, pct } from "@/lib/format";
 import { api } from "@/services/api";
 import type { Backtest, BacktestDefaults, DataSource, Params } from "@/types/api";
+import { t } from "@/lib/i18n";
 
 function isoDaysAgo(days: number): string {
   const d = new Date(Date.now() - days * 86400_000);
@@ -81,21 +82,21 @@ function NewBacktestForm() {
 
   return (
     <Card>
-      <CardHeader><CardTitle>New backtest</CardTitle></CardHeader>
+      <CardHeader><CardTitle>{t("New backtest")}</CardTitle></CardHeader>
       <CardContent>
         {strategies.data?.length === 0 ? (
-          <EmptyState title="No strategies" description="Add a strategy first."
-            action={<Button asChild><Link to="/strategies">Go to Strategies</Link></Button>} />
+          <EmptyState title={t("No strategies")} description={t("Add a strategy first.")}
+            action={<Button asChild><Link to="/strategies">{t("Go to Strategies")}</Link></Button>} />
         ) : (
           <form className="grid gap-4" onSubmit={(e) => { e.preventDefault(); if (!invalid) run.mutate(); }}>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              <Field label="1. Strategy" htmlFor="bs">
+              <Field label={t("1. Strategy")} htmlFor="bs">
                 <Select id="bs" value={strategyId} onChange={(e) => setStrategyId(e.target.value)}>
-                  <option value="">Choose…</option>
+                  <option value="">{t("Choose…")}</option>
                   {(strategies.data ?? []).map((s) => <option key={s.id} value={s.id}>{s.name} (v{s.version})</option>)}
                 </Select>
               </Field>
-              <Field label="2. Data source" htmlFor="bd" hint={ds?.note}>
+              <Field label={t("2. Data source")} htmlFor="bd" hint={ds?.note}>
                 <Select id="bd" value={source} onChange={(e) => setSource(e.target.value)}>
                   {(options.data?.data_sources ?? []).map((d) => (
                     <option key={d.id} value={d.id} disabled={!d.available}>
@@ -104,27 +105,27 @@ function NewBacktestForm() {
                   ))}
                 </Select>
               </Field>
-              <Field label="Benchmark" htmlFor="bb" hint="Leave empty for none.">
+              <Field label={t("Benchmark")} htmlFor="bb" hint={t("Leave empty for none.")}>
                 <Input id="bb" value={benchmark} maxLength={16} onChange={(e) => setBenchmark(e.target.value.toUpperCase())} />
               </Field>
-              <Field label="3. Start date" htmlFor="b1">
+              <Field label={t("3. Start date")} htmlFor="b1">
                 <Input id="b1" type="date" value={start} max={end} onChange={(e) => setStart(e.target.value)} />
               </Field>
-              <Field label="End date" htmlFor="b2">
+              <Field label={t("End date")} htmlFor="b2">
                 <Input id="b2" type="date" value={end} min={start} max={isoDaysAgo(0)} onChange={(e) => setEnd(e.target.value)} />
               </Field>
-              <Field label="4. Initial capital (USD)" htmlFor="b3">
+              <Field label={t("4. Initial capital (USD)")} htmlFor="b3">
                 <Input id="b3" type="number" min={1} step="any" className="num" value={budget} onChange={(e) => setBudget(e.target.value)} />
               </Field>
             </div>
             {strategy && (
-              <Field label="5. Parameters for this run" htmlFor="bp">
+              <Field label={t("5. Parameters for this run")} htmlFor="bp">
                 <ParamsEditor id="bp" value={params} onChange={(p, err) => { if (p) setParams(p); setParamsError(err); }} />
               </Field>
             )}
-            {end <= start && <Alert tone="loss">End date must be after the start date.</Alert>}
+            {end <= start && <Alert tone="loss">{t("End date must be after the start date.")}</Alert>}
             <div className="flex justify-end">
-              <Button type="submit" disabled={invalid} loading={run.isPending}><Play /> 6. Start backtest</Button>
+              <Button type="submit" disabled={invalid} loading={run.isPending}><Play /> {t("6. Start backtest")}</Button>
             </div>
           </form>
         )}
@@ -137,20 +138,20 @@ export function BacktestingPage() {
   const backtests = useBacktests();
   return (
     <>
-      <PageHeader title="Backtesting" description="Runs in a separate process. You can close this page while it runs." />
+      <PageHeader title={t("Backtesting")} description={t("Runs in a separate process. You can close this page while it runs.")} />
       <div className="grid gap-4">
         <NewBacktestForm />
         <Card>
-          <CardHeader><CardTitle>History</CardTitle></CardHeader>
+          <CardHeader><CardTitle>{t("History")}</CardTitle></CardHeader>
           <CardContent className="px-0">
             <QueryBoundary query={backtests}>
               {(list) =>
                 list.length === 0 ? (
-                  <EmptyState title="No backtests yet" />
+                  <EmptyState title={t("No backtests yet")} />
                 ) : (
                   <Table>
                     <thead>
-                      <tr><Th>Strategy</Th><Th>Period</Th><Th>Status</Th><Th>Duration</Th><Th className="text-right">Return</Th><Th className="text-right">Max DD</Th><Th className="text-right">Sharpe</Th><Th className="text-right">Trades</Th></tr>
+                      <tr><Th>{t("Strategy")}</Th><Th>{t("Period")}</Th><Th>{t("Status")}</Th><Th>{t("Duration")}</Th><Th className="text-right">{t("Return")}</Th><Th className="text-right">{t("Max DD")}</Th><Th className="text-right">{t("Sharpe")}</Th><Th className="text-right">{t("Trades")}</Th></tr>
                     </thead>
                     <tbody>
                       {list.map((b) => (

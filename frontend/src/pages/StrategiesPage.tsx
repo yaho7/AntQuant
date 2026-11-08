@@ -14,6 +14,7 @@ import { useAccountSummary, useStrategies } from "@/hooks/queries";
 import { dateTime } from "@/lib/format";
 import { api } from "@/services/api";
 import type { DiscoveredStrategy, Params, Strategy } from "@/types/api";
+import { t } from "@/lib/i18n";
 
 function AddStrategyDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
   const qc = useQueryClient();
@@ -62,7 +63,7 @@ function AddStrategyDialog({ open, onOpenChange }: { open: boolean; onOpenChange
       await qc.invalidateQueries({ queryKey: ["strategies", "discover"] });
       setPicked(`${found[0]!.source_path}::${found[0]!.class_name}`);
       setFile(null);
-      toast.success(`Uploaded: found ${found.map((f) => f.class_name).join(", ")}`);
+      toast.success(t("Uploaded: found {names}", { names: found.map((f) => f.class_name).join(", ") }));
     },
     onError: toast.error,
   });
@@ -86,23 +87,20 @@ function AddStrategyDialog({ open, onOpenChange }: { open: boolean; onOpenChange
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent title="Add strategy" description="Register a LumiBot Strategy class so you can backtest and run it." className="max-w-2xl">
+      <DialogContent title={t("Add strategy")} description={t("Register a LumiBot Strategy class so you can backtest and run it.")} className="max-w-2xl">
         <Tabs defaultValue="existing">
           <TabsList>
-            <TabsTrigger value="existing"><FileCode2 className="mr-1 size-3.5" /> From strategy folder</TabsTrigger>
-            <TabsTrigger value="upload"><Upload className="mr-1 size-3.5" /> Upload .py file</TabsTrigger>
+            <TabsTrigger value="existing"><FileCode2 className="mr-1 size-3.5" /> {t("From strategy folder")}</TabsTrigger>
+            <TabsTrigger value="upload"><Upload className="mr-1 size-3.5" /> {t("Upload .py file")}</TabsTrigger>
           </TabsList>
           <TabsContent value="existing">
-            <p className="text-xs text-muted-foreground">
-              Classes found in <code>strategies/examples</code> and in your data folder
-              <code> data/strategies</code>. Files are parsed, not executed, while listing.
-            </p>
+            <p className="text-xs text-muted-foreground">{t("Classes found in strategies/examples and in data/strategies. Files are parsed, not executed, while listing.")}</p>
           </TabsContent>
           <TabsContent value="upload" className="grid gap-3">
             <Alert tone="warning">
               <ShieldAlert />
               <div className="grid gap-1">
-                <b>Only upload code you trust.</b>
+                <b>{t("Only upload code you trust.")}</b>
                 <span>
                   Strategy code runs as a separate process with the same permissions as the server:
                   it can read files in the data folder (including the encrypted key store) and use
@@ -112,18 +110,15 @@ function AddStrategyDialog({ open, onOpenChange }: { open: boolean; onOpenChange
             </Alert>
             <Input type="file" accept=".py,text/x-python" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
             <label className="flex items-start gap-2 text-sm">
-              <input type="checkbox" className="mt-1" checked={ack} onChange={(e) => setAck(e.target.checked)} />
-              I wrote or reviewed this code and accept that it runs with server permissions.
-            </label>
+              <input type="checkbox" className="mt-1" checked={ack} onChange={(e) => setAck(e.target.checked)} />{t("I wrote or reviewed this code and accept that it runs with server permissions.")} </label>
             <Button variant="outline" disabled={!file || !ack} loading={upload.isPending} onClick={() => upload.mutate()}>
-              <Upload /> Upload and scan
-            </Button>
+              <Upload /> {t("Upload and scan")} </Button>
           </TabsContent>
         </Tabs>
 
-        <Field label="Strategy class" htmlFor="pick">
+        <Field label={t("Strategy class")} htmlFor="pick">
           <Select id="pick" value={picked} onChange={(e) => setPicked(e.target.value)}>
-            <option value="">{discovered.isLoading ? "Loading…" : "Choose a class"}</option>
+            <option value="">{discovered.isLoading ? t("Loading…") : t("Choose a class")}</option>
             {(discovered.data ?? []).map((d) => (
               <option key={`${d.source_path}::${d.class_name}`} value={`${d.source_path}::${d.class_name}`}>
                 {d.class_name} — {d.source_path}
@@ -136,22 +131,21 @@ function AddStrategyDialog({ open, onOpenChange }: { open: boolean; onOpenChange
             {!item.parameters_parsed && (
               <Alert tone="warning">Default parameters could not be read from the file; enter them below.</Alert>
             )}
-            <Field label="Name" htmlFor="sn">
+            <Field label={t("Name")} htmlFor="sn">
               <Input id="sn" value={name} onChange={(e) => setName(e.target.value)} maxLength={128} />
             </Field>
-            <Field label="Description" htmlFor="sd">
+            <Field label={t("Description")} htmlFor="sd">
               <Textarea id="sd" value={description} onChange={(e) => setDescription(e.target.value)} />
             </Field>
-            <Field label="Parameters" htmlFor="sparams">
+            <Field label={t("Parameters")} htmlFor="sparams">
               <ParamsEditor id="sparams" value={params} onChange={(p, err) => { if (p) setParams(p); setParamsError(err); }} />
             </Field>
           </>
         )}
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>{t("Cancel")}</Button>
           <Button disabled={!item || !name.trim() || !!paramsError} loading={create.isPending} onClick={() => create.mutate()}>
-            <Plus /> Add strategy
-          </Button>
+            <Plus /> {t("Add strategy")} </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -166,29 +160,29 @@ export function StrategiesPage() {
   return (
     <>
       <PageHeader
-        title="Strategies"
-        description="Registered LumiBot strategies. Each run executes in its own process."
-        actions={<Button onClick={() => setAdding(true)}><Plus /> Add strategy</Button>}
+        title={t("Strategies")}
+        description={t("Registered LumiBot strategies. Each run executes in its own process.")}
+        actions={<Button onClick={() => setAdding(true)}><Plus /> {t("Add strategy")}</Button>}
       />
       <Card>
         <QueryBoundary query={strategies} rows={4}>
           {(list) =>
             list.length === 0 ? (
               <EmptyState
-                title="No strategies yet"
-                description="Add one of the bundled examples or upload your own LumiBot strategy file."
-                action={<Button onClick={() => setAdding(true)}><Plus /> Add strategy</Button>}
+                title={t("No strategies yet")}
+                description={t("Add one of the bundled examples or upload your own LumiBot strategy file.")}
+                action={<Button onClick={() => setAdding(true)}><Plus /> {t("Add strategy")}</Button>}
               />
             ) : (
               <Table>
                 <thead>
                   <tr>
-                    <Th>Name</Th>
-                    <Th>Class</Th>
-                    <Th>Version</Th>
-                    <Th>Paper trading</Th>
-                    <Th>Updated</Th>
-                    <Th className="text-right">Actions</Th>
+                    <Th>{t("Name")}</Th>
+                    <Th>{t("Class")}</Th>
+                    <Th>{t("Version")}</Th>
+                    <Th>{t("Paper trading")}</Th>
+                    <Th>{t("Updated")}</Th>
+                    <Th className="text-right">{t("Actions")}</Th>
                   </tr>
                 </thead>
                 <tbody>
@@ -204,14 +198,14 @@ export function StrategiesPage() {
                         {s.trading_task ? (
                           <StatusBadge status={s.trading_task.status} paused={s.trading_task.paused} />
                         ) : (
-                          <span className="text-xs text-muted-foreground">Never run</span>
+                          <span className="text-xs text-muted-foreground">{t("Never run")}</span>
                         )}
                       </Td>
                       <Td className="num text-xs text-muted-foreground">{dateTime(s.updated_at)}</Td>
                       <Td className="text-right">
                         <div className="flex justify-end gap-2">
                           <Button asChild size="sm" variant="ghost">
-                            <Link to={`/backtesting?strategy=${s.id}`}>Backtest</Link>
+                            <Link to={`/backtesting?strategy=${s.id}`}>{t("Backtest")}</Link>
                           </Button>
                           <TradingControls strategyId={s.id} task={s.trading_task} brokerConnected={connected} />
                         </div>

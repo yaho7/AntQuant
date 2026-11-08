@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Alert, Card, Field, Input } from "@/components/ui/primitives";
 import { useAuth } from "@/hooks/useAuth";
 import { api } from "@/services/api";
+import { t } from "@/lib/i18n";
 
 function Shell({ children, title, subtitle }: {
   children: React.ReactNode;
@@ -20,7 +21,7 @@ function Shell({ children, title, subtitle }: {
           <div className="flex size-8 items-center justify-center rounded-md bg-primary text-primary-foreground">
             <Activity className="size-4" />
           </div>
-          <span className="font-semibold tracking-tight">LumiBot UI</span>
+          <span className="font-semibold tracking-tight">{t("LumiBot UI")}</span>
         </div>
         <h1 className="text-xl font-semibold tracking-tight">{title}</h1>
         <p className="mb-5 mt-1 text-sm text-muted-foreground">{subtitle}</p>
@@ -39,7 +40,7 @@ export function LoginPage() {
     onSuccess: () => refresh(),
   });
   return (
-    <Shell title="Sign in" subtitle="Administrator access to your trading workspace.">
+    <Shell title={t("Sign in")} subtitle={t("Administrator access to your trading workspace.")}>
       <form
         className="grid gap-4"
         onSubmit={(e) => {
@@ -47,16 +48,16 @@ export function LoginPage() {
           login.mutate();
         }}
       >
-        <Field label="Username" htmlFor="u">
+        <Field label={t("Username")} htmlFor="u">
           <Input id="u" autoComplete="username" value={username}
             onChange={(e) => setUsername(e.target.value)} required />
         </Field>
-        <Field label="Password" htmlFor="p">
+        <Field label={t("Password")} htmlFor="p">
           <Input id="p" type="password" autoComplete="current-password" value={password}
             onChange={(e) => setPassword(e.target.value)} required />
         </Field>
         {login.error && <Alert tone="loss">{(login.error as Error).message}</Alert>}
-        <Button type="submit" loading={login.isPending}>Sign in</Button>
+        <Button type="submit" loading={login.isPending}>{t("Sign in")}</Button>
       </form>
     </Shell>
   );
@@ -68,19 +69,16 @@ export function ConnectBrokerPage() {
   const finish = () => navigate("/", { replace: true });
   return (
     <Shell
-      title="Connect Alpaca (optional)"
-      subtitle="Step 2 of 2 · Paper trading only. You can do this later in Settings."
+      title={t("Connect Alpaca (optional)")}
+      subtitle={t("Step 2 of 2 · Paper trading only. You can do this later in Settings.")}
     >
       <div className="grid gap-4">
         <Alert tone="info">
           <KeyRound />
-          <div>
-            Use keys from an Alpaca <b>paper</b> account. Keys are encrypted on the server and
-            are never shown again in the browser.
-          </div>
+          <div>{t("Use keys from an Alpaca paper account. Keys are encrypted on the server and are never shown again in the browser.")}</div>
         </Alert>
         <AlpacaKeysForm onSaved={finish} />
-        <Button variant="ghost" onClick={finish}>Skip for now</Button>
+        <Button variant="ghost" onClick={finish}>{t("Skip for now")}</Button>
       </div>
     </Shell>
   );
@@ -110,7 +108,7 @@ export function SetupPage() {
   });
 
   return (
-    <Shell title="Welcome" subtitle="Step 1 of 2 · Create the administrator account.">
+    <Shell title={t("Welcome")} subtitle={t("Step 1 of 2 · Create the administrator account.")}>
       <form
         className="grid gap-4"
         onSubmit={(e) => {
@@ -121,35 +119,34 @@ export function SetupPage() {
         <Alert tone="info">
           <Terminal />
           <div className="grid gap-1">
-            <span>Enter the setup token printed in the server log. With Docker:</span>
+            <span>{t("Enter the setup token printed in the server log. With Docker:")}</span>
             <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">
               docker compose logs lumibot-ui | grep "setup token"
             </code>
           </div>
         </Alert>
-        <Field label="Setup token" htmlFor="tok">
+        <Field label={t("Setup token")} htmlFor="tok">
           <Input id="tok" autoComplete="off" value={form.setup_token} required
             className="font-mono"
             onChange={(e) => setForm({ ...form, setup_token: e.target.value })} />
         </Field>
-        <Field label="Username" htmlFor="su">
+        <Field label={t("Username")} htmlFor="su">
           <Input id="su" autoComplete="username" value={form.username} required
             onChange={(e) => setForm({ ...form, username: e.target.value })} />
         </Field>
-        <Field label="Password" htmlFor="sp" hint="At least 10 characters.">
+        <Field label={t("Password")} htmlFor="sp" hint={t("At least 10 characters.")}>
           <Input id="sp" type="password" autoComplete="new-password" minLength={10} required
             value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
         </Field>
-        <Field label="Confirm password" htmlFor="sc">
+        <Field label={t("Confirm password")} htmlFor="sc">
           <Input id="sc" type="password" autoComplete="new-password" required
             value={form.confirm} onChange={(e) => setForm({ ...form, confirm: e.target.value })}
             aria-invalid={mismatch} />
         </Field>
-        {mismatch && <Alert tone="loss">Passwords do not match.</Alert>}
+        {mismatch && <Alert tone="loss">{t("Passwords do not match.")}</Alert>}
         {create.error && <Alert tone="loss">{(create.error as Error).message}</Alert>}
         <Button type="submit" loading={create.isPending} disabled={mismatch}>
-          <ShieldCheck /> Create account
-        </Button>
+          <ShieldCheck /> {t("Create account")} </Button>
       </form>
     </Shell>
   );
