@@ -10,6 +10,7 @@ from fastapi.testclient import TestClient
 from backend.adapters.brokers.alpaca import AlpacaAdapter
 from backend.adapters.brokers.mock import MockBroker
 from backend.core.db import session_factory
+from backend.services import broker_service
 from backend.services import schwab_service as schwab
 from tests.test_task_manager import make_strategy
 
@@ -42,6 +43,11 @@ def test_profiles_scope_reads_and_allow_parallel_strategy(
     a, b = add_alpaca(authed, "1001"), add_alpaca(authed, "1002")
     assert a["account_hint"] == "••••1001"
     assert a["id"] != b["id"]
+    with session_factory()() as db:
+        first = broker_service.get_broker(db, a["id"])
+        second = broker_service.get_broker(db, b["id"])
+        assert first is not None and second is not None and first is not second
+        assert broker_service.get_broker(db, a["id"]) is first
     strategy = make_strategy(authed)
     for profile, equity in [(a, 1001), (b, 1002)]:
         params = {"profile_id": profile["id"]}

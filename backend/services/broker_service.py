@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import hashlib
-import threading
 import time
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from functools import lru_cache
 from typing import Literal
 
 from sqlalchemy import select, text
@@ -29,8 +29,6 @@ from backend.services.settings_store import (
     set_setting,
 )
 
-_lock = threading.Lock()
-_cached: tuple[str, BrokerAdapter] | None = None
 _override: BrokerAdapter | None = None
 
 
@@ -47,9 +45,9 @@ class AlpacaConnection:
 
 def set_broker_override(broker: BrokerAdapter | None) -> None:
     """Tests inject a MockBroker here."""
-    global _override, _cached
+    global _override
     _override = broker
-    _cached = None
+    reset_broker()
 
 
 def alpaca_credentials(db: Session) -> AlpacaConnection | None:
@@ -212,21 +210,11 @@ def get_alpaca_broker(db: Session) -> BrokerAdapter | None:
     return _alpaca_adapter(creds)
 
 
+@lru_cache(maxsize=64)
 def _alpaca_adapter(creds: AlpacaConnection) -> BrokerAdapter:
-    global _cached
-    fingerprint = hashlib.sha256(
-        f"{creds.endpoint}\0{creds.key}\0{creds.secret}".encode()
-    ).hexdigest()
-    with _lock:
-        if _cached is None or _cached[0] != fingerprint:
-            _cached = (
-                fingerprint,
-                AlpacaAdapter(creds.key, creds.secret, paper=creds.paper, endpoint=creds.endpoint),
-            )
-        return _cached[1]
+    # Each account keeps its own read cache and request budget as views switch.
+    return AlpacaAdapter(creds.key, creds.secret, paper=creds.paper, endpoint=creds.endpoint)
 
 
 def reset_broker() -> None:
-    global _cached
-    with _lock:
-        _cached = None
+    _alpaca_adapter.cache_clear()

@@ -172,6 +172,7 @@ def save_alpaca(body: AlpacaProfile, request: Request, db: Session, profile_id: 
     profile.name, profile.identity, profile.account_hint = body.name, identity, hint
     schwab.write_json_secret(db, brokers.alpaca_profile_secret(profile.id), asdict(creds))
     audit(db, "profile.alpaca", profile.id, {}, client_ip(request))
+    brokers.reset_broker()
     return profile_out(db, profile)
 
 
@@ -385,4 +386,5 @@ def disconnect(profile_id: str, request: Request, db: Session = Depends(get_db))
                 delete_secrets(db, schwab.grant_secret(conn.grant_id))
     profile.legacy = False
     audit(db, "profile.disconnect", profile_id, {}, client_ip(request))
+    brokers.reset_broker()
     return {"status": "ok"}
