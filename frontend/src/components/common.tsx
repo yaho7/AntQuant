@@ -77,7 +77,7 @@ export function ErrorState({ error, onRetry }: { error: unknown; onRetry?: () =>
     <div role="alert" className="flex flex-col items-center gap-2 px-4 py-8 text-center">
       <AlertTriangle className="size-7 text-loss" />
       <p className="text-sm font-medium">{t("Something went wrong")}</p>
-      <p className="max-w-lg break-words text-sm text-muted-foreground">{message}</p>
+      <p className="max-w-lg break-words text-sm text-muted-foreground">{t(message)}</p>
       {onRetry && (
         <Button variant="outline" size="sm" onClick={onRetry} className="mt-2">{t("Retry")} </Button>
       )}
@@ -125,7 +125,7 @@ export function Delta({
     >
       {dir !== "none" && <Icon className="size-3.5 shrink-0" aria-hidden />}
       <span>{children}</span>
-      <span className="sr-only">{dir === "up" ? "gain" : dir === "down" ? "loss" : ""}</span>
+      <span className="sr-only">{dir === "up" ? t("gain") : dir === "down" ? t("loss") : ""}</span>
     </span>
   );
 }

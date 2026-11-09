@@ -84,7 +84,7 @@ export function DashboardPage() {
             <AlertTriangle />
             <div>
               <p className="font-medium">{t("Could not load the Alpaca account")}</p>
-              <p className="text-muted-foreground">{summary.data.error}</p>
+              <p className="text-muted-foreground">{t(summary.data.error)}</p>
             </div>
           </Alert>
         </>

@@ -1,6 +1,7 @@
 import * as D from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
 import * as React from "react";
+import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 export const Dialog = D.Root;
@@ -35,7 +36,7 @@ export function DialogContent({
         {children}
         <D.Close
           className="absolute right-4 top-4 rounded-sm opacity-70 hover:opacity-100"
-          aria-label="Close"
+          aria-label={t("Close")}
         >
           <X className="size-4" />
         </D.Close>

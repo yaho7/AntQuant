@@ -102,9 +102,7 @@ function AddStrategyDialog({ open, onOpenChange }: { open: boolean; onOpenChange
               <div className="grid gap-1">
                 <b>{t("Only upload code you trust.")}</b>
                 <span>
-                  Strategy code runs as a separate process with the same permissions as the server:
-                  it can read files in the data folder (including the encrypted key store) and use
-                  your broker keys. There is no sandbox.
+                  {t("Strategy code runs as a separate process with the same permissions as the server: it can read files in the data folder (including the encrypted key store) and use your broker keys. There is no sandbox.")}
                 </span>
               </div>
             </Alert>
@@ -129,7 +127,7 @@ function AddStrategyDialog({ open, onOpenChange }: { open: boolean; onOpenChange
         {item && (
           <>
             {!item.parameters_parsed && (
-              <Alert tone="warning">Default parameters could not be read from the file; enter them below.</Alert>
+              <Alert tone="warning">{t("Default parameters could not be read from the file; enter them below.")}</Alert>
             )}
             <Field label={t("Name")} htmlFor="sn">
               <Input id="sn" value={name} onChange={(e) => setName(e.target.value)} maxLength={128} />

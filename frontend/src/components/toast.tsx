@@ -48,7 +48,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
             ) : (
               <XCircle className="mt-0.5 size-4 shrink-0 text-loss" />
             )}
-            <span className="flex-1 break-words">{item.message}</span>
+            <span className="flex-1 break-words">{t(item.message)}</span>
             <button
               aria-label={t("Dismiss")}
               onClick={() => setToasts((all) => all.filter((x) => x.id !== item.id))}

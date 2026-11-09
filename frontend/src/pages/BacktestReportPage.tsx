@@ -103,8 +103,8 @@ function TradesTable({ trades }: { trades: BacktestResult["trades"] }) {
             <tr key={i}>
               <Td className="num text-xs" title={t("Exchange time")}>{tr.time.slice(0, 16)}</Td>
               <Td className="font-medium">{tr.symbol}</Td>
-              <Td className="capitalize">{tr.side}</Td>
-              <Td className="capitalize text-xs">{tr.order_type}</Td>
+              <Td className="capitalize">{t(tr.side.toLowerCase())}</Td>
+              <Td className="capitalize text-xs">{tr.order_type ? t(tr.order_type.toLowerCase().replace(/_/g, " ")) : "—"}</Td>
               <Td className="num text-right">{num(tr.quantity, 4)}</Td>
               <Td className="num text-right">{money(tr.price)}</Td>
               <Td className="num text-right">{money(tr.quantity * tr.price * (tr.multiplier ?? 1))}</Td>
@@ -116,7 +116,7 @@ function TradesTable({ trades }: { trades: BacktestResult["trades"] }) {
       {trades.length > limit && (
         <div className="flex justify-center p-3">
           <Button size="sm" variant="ghost" onClick={() => setLimit((l) => l + 200)}>
-            Show more ({trades.length - limit} remaining)
+            {t("Show more ({n} remaining)", { n: trades.length - limit })}
           </Button>
         </div>
       )}
@@ -153,7 +153,7 @@ export function BacktestReportPage() {
               description={
                 <span className="num">
                   {String(b.config.start)} → {String(b.config.end)} · {money(Number(b.config.budget), "USD", 0)} ·{" "}
-                  {String(b.config.data_source)} · strategy v{b.strategy_version}
+                  {String(b.config.data_source)}{b.strategy_version != null && ` · ${t("Strategy v{v}", { v: b.strategy_version })}`}
                 </span>
               }
               actions={
@@ -168,15 +168,15 @@ export function BacktestReportPage() {
               {active && (
                 <span className="flex items-center gap-2">
                   <Progress value={b.progress} />
-                  <span className="num text-muted-foreground">{b.progress != null ? `${b.progress.toFixed(1)}%` : "waiting for first progress update"}</span>
+                  <span className="num text-muted-foreground">{b.progress != null ? `${b.progress.toFixed(1)}%` : t("Waiting for first progress update")}</span>
                 </span>
               )}
               <span className="text-muted-foreground">{t("Started")} <span className="num text-foreground">{dateTime(b.started_at)}</span></span>
               <span className="text-muted-foreground">{t("Duration")} <span className="num text-foreground">{b.started_at ? duration(between(b.started_at, b.ended_at)) : "—"}</span></span>
-              <span className="text-muted-foreground">{t("Benchmark")} <span className="text-foreground">{String(b.config.benchmark ?? "none")}</span></span>
+              <span className="text-muted-foreground">{t("Benchmark")} <span className="text-foreground">{b.config.benchmark ? String(b.config.benchmark) : t("None")}</span></span>
             </Card>
-            {b.status === "failed" && <Alert tone="loss" className="mb-4"><div><b>{t("Backtest failed.")}</b> {b.error_message}</div></Alert>}
-            {b.status === "stopped" && <Alert tone="warning" className="mb-4">{b.error_message ?? "Stopped."}</Alert>}
+            {b.status === "failed" && <Alert tone="loss" className="mb-4"><div><b>{t("Backtest failed.")}</b> {b.error_message && t(b.error_message)}</div></Alert>}
+            {b.status === "stopped" && <Alert tone="warning" className="mb-4">{t(b.error_message ?? "Stopped.")}</Alert>}
             {b.status === "completed" ? (
               <Report id={b.id} />
             ) : active ? (

@@ -145,7 +145,7 @@ export function AppLayout() {
             {privacy ? <EyeOff /> : <Eye />}
           </RailButton>
           <LanguageMenu side="right" />
-          <RailButton label={`Theme: ${theme}`} onClick={() => setTheme(NEXT_THEME[theme])}>
+          <RailButton label={t("Theme: {theme}", { theme: t(theme) })} onClick={() => setTheme(NEXT_THEME[theme])}>
             <ThemeIcon />
           </RailButton>
           <RailButton label={`${t("Sign out")}${me ? ` (${me.username})` : ""}`} onClick={() => void logout()}>
@@ -165,7 +165,7 @@ export function AppLayout() {
               {privacy ? <EyeOff /> : <Eye />}
             </RailButton>
             <LanguageMenu side="bottom" />
-            <RailButton label={`Theme: ${theme}`} onClick={() => setTheme(NEXT_THEME[theme])}>
+            <RailButton label={t("Theme: {theme}", { theme: t(theme) })} onClick={() => setTheme(NEXT_THEME[theme])}>
               <ThemeIcon />
             </RailButton>
             <RailButton label={t("Sign out")} onClick={() => void logout()}>

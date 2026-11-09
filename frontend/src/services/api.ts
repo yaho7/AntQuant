@@ -28,7 +28,7 @@ export function setUnauthorizedHandler(fn: (() => void) | null): void {
 async function parseError(res: Response): Promise<string> {
   try {
     const body = await res.json();
-    if (typeof body.detail === "string") return body.detail;
+    if (typeof body.detail === "string") return t(body.detail);
     if (Array.isArray(body.detail)) {
       return body.detail
         .map((d: { loc?: unknown[]; msg?: string }) =>
@@ -39,7 +39,7 @@ async function parseError(res: Response): Promise<string> {
   } catch {
     /* not JSON */
   }
-  return `${res.status} ${res.statusText || "Request failed"}`;
+  return `${res.status} ${t(res.statusText || "Request failed")}`;
 }
 
 export async function request<T>(

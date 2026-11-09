@@ -96,11 +96,11 @@ function NewBacktestForm() {
                   {(strategies.data ?? []).map((s) => <option key={s.id} value={s.id}>{s.name} (v{s.version})</option>)}
                 </Select>
               </Field>
-              <Field label={t("2. Data source")} htmlFor="bd" hint={ds?.note}>
+              <Field label={t("2. Data source")} htmlFor="bd" hint={ds && t(ds.note)}>
                 <Select id="bd" value={source} onChange={(e) => setSource(e.target.value)}>
                   {(options.data?.data_sources ?? []).map((d) => (
                     <option key={d.id} value={d.id} disabled={!d.available}>
-                      {d.label}{!d.available ? " (needs Alpaca keys)" : ""}
+                      {t(d.label)}{!d.available ? ` ${t("(needs Alpaca keys)")}` : ""}
                     </option>
                   ))}
                 </Select>

@@ -121,8 +121,7 @@ function PerformanceTab({ strategyId }: { strategyId: number }) {
               <div>
                 <CardTitle>{t("Fills by this strategy")}</CardTitle>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Fills recorded by this strategy's own runs. Account equity is shared by all strategies on the
-                  account, so per-strategy P&amp;L is not derived from it.
+                  {t("Fills recorded by this strategy's own runs. Account equity is shared by all strategies on the account, so per-strategy P&L is not derived from it.")}
                 </p>
               </div>
             </CardHeader>
@@ -215,7 +214,7 @@ function CodeTab({ strategyId }: { strategyId: number }) {
             </div>
             <pre className="max-h-[60vh] overflow-auto p-4 font-mono text-xs leading-relaxed">{s.code}</pre>
             <p className="border-t px-4 py-2 text-xs text-muted-foreground">
-              Read-only. Edit the file in your strategy folder; the next version you save records the new hash.
+              {t("Read-only. Edit the file in your strategy folder; the next version you save records the new hash.")}
             </p>
           </div>
         )}

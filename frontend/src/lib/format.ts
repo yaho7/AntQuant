@@ -1,4 +1,4 @@
-import { intlLocale } from "./i18n";
+import { intlLocale, t } from "./i18n";
 
 /** Formatting helpers. `null`/`undefined` always render as "N/A", never as 0. */
 
@@ -65,10 +65,10 @@ export function duration(seconds: number | null | undefined): string {
   const d = Math.floor(s / 86400);
   const h = Math.floor((s % 86400) / 3600);
   const m = Math.floor((s % 3600) / 60);
-  if (d) return `${d}d ${h}h`;
-  if (h) return `${h}h ${m}m`;
-  if (m) return `${m}m ${s % 60}s`;
-  return `${s}s`;
+  if (d) return t("{d}d {h}h", { d, h });
+  if (h) return t("{h}h {m}m", { h, m });
+  if (m) return t("{m}m {s}s", { m, s: s % 60 });
+  return t("{s}s", { s });
 }
 
 export function between(start: string | null, end: string | null): number | null {

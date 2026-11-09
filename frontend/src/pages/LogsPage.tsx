@@ -55,7 +55,7 @@ export function LogsPage() {
     if (auto) bottom.current?.scrollIntoView({ block: "end" });
   }, [logs.data, auto]);
 
-  const groups: Record<string, string> = { system: t("System"), backtest: t("Backtests"), trading: t("Paper trading") };
+  const groups: Record<string, string> = { system: t("System"), backtest: t("Backtests"), trading: t("Trading") };
 
   return (
     <>
@@ -65,7 +65,7 @@ export function LogsPage() {
         actions={
           <>
             <Button variant="outline" onClick={() => setAuto((a) => !a)} aria-pressed={auto}>
-              {auto ? <Pause /> : <Play />} {auto ? "Auto-refresh on" : "Auto-refresh off"}
+              {auto ? <Pause /> : <Play />} {t(auto ? "Auto-refresh on" : "Auto-refresh off")}
             </Button>
             <Button asChild variant="outline">
               <a href={`/api/logs/download${qs({ source })}`}><Download /> {t("Download")}</a>
@@ -79,7 +79,7 @@ export function LogsPage() {
             const v = e.target.value;
             setParams(v ? { strategy: v } : {});
           }}>
-            <option value="">All (system logs)</option>
+            <option value="">{t("All (system logs)")}</option>
             {(strategies.data ?? []).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
           </Select>
         </Field>
@@ -89,7 +89,7 @@ export function LogsPage() {
               const items = (sources.data ?? []).filter((s) => s.group === g);
               return items.length ? (
                 <optgroup key={g} label={label}>
-                  {items.map((s) => <option key={s.id} value={s.id}>{s.label}{s.status ? ` (${s.status})` : ""}</option>)}
+                  {items.map((s) => <option key={s.id} value={s.id}>{s.label}{s.status ? ` (${t(s.status)})` : ""}</option>)}
                 </optgroup>
               ) : null;
             })}

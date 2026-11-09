@@ -57,7 +57,7 @@ export function LoginPage() {
           <Input id="p" type="password" autoComplete="current-password" value={password}
             onChange={(e) => setPassword(e.target.value)} required />
         </Field>
-        {login.error && <Alert tone="loss">{(login.error as Error).message}</Alert>}
+        {login.error && <Alert tone="loss">{t(login.error.message)}</Alert>}
         <Button type="submit" loading={login.isPending}>{t("Sign in")}</Button>
       </form>
     </Shell>

@@ -95,7 +95,7 @@ export function TradingPage() {
       ) : !summary.data?.connected ? (
         <Card className="mb-4"><ConnectBrokerPrompt /></Card>
       ) : summary.data.error ? (
-        <Alert tone="loss" className="mb-4">{summary.data.error}</Alert>
+        <Alert tone="loss" className="mb-4">{t(summary.data.error)}</Alert>
       ) : account ? (
         <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
           <StatCard label={t("Account")} value={<span className="text-base">{account.account_id}</span>} sub={<ModeBadge mode={account.paper ? "paper" : "live"} />} />
@@ -111,8 +111,7 @@ export function TradingPage() {
           <div>
             <CardTitle>{t("Strategy runs")}</CardTitle>
             <p className="mt-1 text-xs text-muted-foreground">
-              Pause blocks orders that open or grow a position; exits still go through. Stop ends the
-              process and keeps positions. Liquidate closes every position in the account.
+              {t("Pause blocks orders that open or grow a position; exits still go through. Stop ends the process and keeps positions. Liquidate closes every position in the account.")}
             </p>
           </div>
         </CardHeader>

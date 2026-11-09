@@ -34,14 +34,14 @@ export function PositionsTable({ positions }: { positions: Position[] }) {
           <Th className="text-right">{t("Avg entry")}</Th>
           <Th className="text-right">{t("Price")}</Th>
           <Th className="text-right">{t("Market value")}</Th>
-          <Th className="text-right">Unrealized P&amp;L</Th>
+          <Th className="text-right">{t("Unrealized P&L")}</Th>
         </tr>
       </thead>
       <tbody>
         {positions.map((p) => (
           <tr key={p.symbol}>
             <Td className="font-medium">{p.symbol}</Td>
-            <Td className="capitalize">{p.side}</Td>
+            <Td className="capitalize">{t(p.side.toLowerCase())}</Td>
             <Td className="num sensitive text-right">{num(p.quantity, 4)}</Td>
             <Td className="num text-right">{money(p.avg_entry_price)}</Td>
             <Td className="num text-right">{money(p.current_price)}</Td>
@@ -79,9 +79,9 @@ export function OrdersTable({ orders, empty }: { orders: Order[]; empty: string 
           <tr key={o.id}>
             <Td className="num text-muted-foreground">{dateTime(o.filled_at ?? o.submitted_at)}</Td>
             <Td className="font-medium">{o.symbol}</Td>
-            <Td className="capitalize">{o.side}</Td>
-            <Td className="capitalize">{o.type.replace(/_/g, " ")}</Td>
-            <Td className="capitalize">{o.status.replace(/_/g, " ")}</Td>
+            <Td className="capitalize">{t(o.side.toLowerCase())}</Td>
+            <Td className="capitalize">{t(o.type.toLowerCase().replace(/_/g, " "))}</Td>
+            <Td className="capitalize">{t(o.status.toLowerCase().replace(/_/g, " "))}</Td>
             <Td className="num text-right">{num(o.quantity, 4)}</Td>
             <Td className="num text-right">{num(o.filled_quantity, 4)}</Td>
             <Td className="num text-right">{money(o.filled_avg_price)}</Td>

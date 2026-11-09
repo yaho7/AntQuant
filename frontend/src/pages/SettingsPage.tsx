@@ -52,7 +52,7 @@ function BrokerCard({ view }: { view: SettingsView }) {
                 })}
               </Alert>
             ) : (
-              <Alert tone="loss">{test.data.error}</Alert>
+              <Alert tone="loss">{t(test.data.error ?? "Connection failed")}</Alert>
             ))}
             <div className="flex flex-wrap gap-2">
               <Button variant="outline" size="sm" loading={test.isPending} onClick={() => test.mutate()}>{t("Test connection")}</Button>
@@ -179,7 +179,7 @@ function SystemCard() {
             <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-1.5 text-sm">
               <dt className="text-muted-foreground">{t("LumiBot UI")}</dt><dd className="num">{i.ui_version}</dd>
               <dt className="text-muted-foreground">{t("LumiBot")}</dt>
-              <dd className="num flex items-center gap-2">{i.lumibot_version ?? "not installed"}
+              <dd className="num flex items-center gap-2">{i.lumibot_version ?? t("not installed")}
                 {i.lumibot_version && i.verified_lumibot_versions.includes(i.lumibot_version)
                   ? <Badge tone="gain">{t("verified")}</Badge> : <Badge tone="warning">{t("not verified")}</Badge>}
               </dd>
@@ -187,7 +187,7 @@ function SystemCard() {
               <dt className="text-muted-foreground">{t("Python")}</dt><dd className="num">{i.python}</dd>
               <dt className="text-muted-foreground">{t("Platform")}</dt><dd className="break-all text-xs">{i.platform}</dd>
               <dt className="text-muted-foreground">{t("Data folder")}</dt><dd className="break-all font-mono text-xs">{i.data_dir}</dd>
-              <dt className="text-muted-foreground">{t("Disk free")}</dt><dd className="num">{bytes(i.disk_free_bytes)} of {bytes(i.disk_total_bytes)}</dd>
+              <dt className="text-muted-foreground">{t("Disk free")}</dt><dd className="num">{t("{free} of {total}", { free: bytes(i.disk_free_bytes), total: bytes(i.disk_total_bytes) })}</dd>
               <dt className="text-muted-foreground">{t("Tasks recorded")}</dt><dd className="num">{i.task_count}</dd>
               <dt className="text-muted-foreground">{t("Uptime")}</dt><dd className="num">{duration(i.uptime_seconds)}</dd>
             </dl>
@@ -197,7 +197,7 @@ function SystemCard() {
           <Alert tone="info">
             <div className="grid gap-1">
               <span>{t("LumiBot latest on PyPI:")} <b className="num">{updates.data.lumibot.latest ?? updates.data.lumibot.error}</b>
-                {updates.data.lumibot.latest && updates.data.lumibot.latest !== updates.data.lumibot.installed && " (newer than installed; wait for a LumiBot UI release that verifies it)"}</span>
+                {updates.data.lumibot.latest && updates.data.lumibot.latest !== updates.data.lumibot.installed && ` ${t("(newer than installed; wait for a LumiBot UI release that verifies it)")}`}</span>
               <span>{t("LumiBot UI latest release:")} <b className="num">{updates.data.ui.latest ?? updates.data.ui.error}</b></span>
               <span className="text-xs text-muted-foreground">{t("Nothing is installed automatically. Update by pulling a newer image tag.")}</span>
             </div>
@@ -211,8 +211,8 @@ function SystemCard() {
                 {c.checks.map((ch) => (
                   <li key={ch.name} className="flex items-start gap-2">
                     {ch.ok ? <CheckCircle2 className="mt-0.5 size-4 text-gain" /> : <XCircle className="mt-0.5 size-4 text-loss" />}
-                    <span className="font-mono text-xs">{ch.name}</span>
-                    <span className="text-xs text-muted-foreground">{ch.detail}</span>
+                    <span className="font-mono text-xs">{t(ch.name)}</span>
+                    <span className="text-xs text-muted-foreground">{t(ch.detail)}</span>
                   </li>
                 ))}
                 {c.error && <li className="text-xs text-loss">{c.error}</li>}
