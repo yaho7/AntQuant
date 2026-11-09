@@ -1,7 +1,7 @@
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { python } from "@codemirror/lang-python";
 import { bracketMatching, HighlightStyle, indentOnInput, syntaxHighlighting } from "@codemirror/language";
-import { Compartment, EditorState } from "@codemirror/state";
+import { Compartment, EditorState, Transaction } from "@codemirror/state";
 import { EditorView, keymap, lineNumbers } from "@codemirror/view";
 import { tags } from "@lezer/highlight";
 import { useEffect, useRef } from "react";
@@ -64,7 +64,10 @@ export default function PythonEditor({ code, onChange, label }: {
   useEffect(() => {
     const editor = view.current;
     if (editor && code !== editor.state.doc.toString()) {
-      editor.dispatch({ changes: { from: 0, to: editor.state.doc.length, insert: code } });
+      editor.dispatch({
+        changes: { from: 0, to: editor.state.doc.length, insert: code },
+        annotations: Transaction.addToHistory.of(false),
+      });
     }
   }, [code]);
 

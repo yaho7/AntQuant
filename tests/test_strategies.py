@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 from fastapi.testclient import TestClient
 
 from backend.adapters.lumibot_adapter import parse_strategy_file
+from tests.test_task_manager import backtest_body, wait_for
 
 GOOD = b'''
 from lumibot.strategies import Strategy
@@ -131,3 +133,49 @@ def test_scan_and_import_strategy(authed: TestClient) -> None:
     assert saved.json()["parameters"] == {"n": 5}
     path = f"/api/strategies/{saved.json()['id']}/source"
     assert authed.get(path).json()["code"] == code
+
+
+def test_edit_restore_and_pin_queued_backtest(
+    authed: TestClient, data_dir: Path, monkeypatch
+) -> None:
+    manager = authed.app.state.task_manager
+    start_pending = manager._start_pending
+    monkeypatch.setattr(manager, "_start_pending", lambda db: None)
+    code = GOOD.decode()
+    trusted = {"code": code, "class_name": "MyBot", "acknowledge_risk": True}
+    created = authed.post("/api/strategies/import", json={**trusted, "name": "Bot"})
+    assert created.status_code == 200, created.text
+    sid = created.json()["id"]
+    base = f"/api/strategies/{sid}"
+    task = authed.post("/api/backtests", json=backtest_body(sid, n=3)).json()
+    assert task["status"] == "pending"
+
+    new_code = code.replace("MyBot", "NewBot").replace('"n": 3', '"n": 8')
+    edit = {
+        **trusted,
+        "code": new_code,
+        "class_name": "NewBot",
+        "expected_version": 1,
+        "parameters": {"n": 8},
+    }
+    assert authed.put(f"{base}/source", json={**edit, "class_name": "MyBot"}).status_code == 400
+    saved = authed.put(f"{base}/source", json=edit)
+    assert saved.status_code == 200, saved.text
+    assert saved.json()["version"] == 2 and saved.json()["class_name"] == "NewBot"
+    assert authed.put(f"{base}/source", json=edit).status_code == 409
+    assert authed.get(f"{base}/source").json()["code"] == new_code
+
+    monkeypatch.setattr(manager, "_start_pending", start_pending)
+    task_path = f"/api/backtests/{task['id']}"
+    wait_for(authed, task_path, lambda result: result["status"] == "completed")
+    spec = json.loads((data_dir / "tasks" / task["id"] / "spec.json").read_text())
+    assert spec["class_name"] == "MyBot"
+    assert Path(spec["strategy_code"]).read_text() == code
+    assert spec["parameters"] == {"n": 3}
+
+    assert all(v["code_available"] for v in authed.get(f"{base}/versions").json())
+    restored = authed.post(f"{base}/versions/1/restore", json={})
+    assert restored.status_code == 200, restored.text
+    assert restored.json()["class_name"] == "MyBot"
+    assert restored.json()["parameters"] == {"symbol": "QQQ", "n": 3}
+    assert authed.get(f"{base}/source").json()["code"] == code

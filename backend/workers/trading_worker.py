@@ -241,7 +241,7 @@ def run_strategy(work_dir: Path, spec: dict[str, Any], broker: Any) -> None:
     from lumibot.traders import Trader
 
     strategy_cls = make_managed_strategy(
-        load_strategy_class(spec["strategy_file"], spec["class_name"]),
+        load_strategy_class(spec["strategy_file"], spec["class_name"], spec.get("strategy_code")),
         work_dir,
         spec.get("broker_key"),
     )

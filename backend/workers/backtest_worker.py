@@ -70,7 +70,9 @@ def run(work_dir: Path) -> None:
         if config is None:
             raise RuntimeError("Alpaca keys are not configured; set them in Settings.")
 
-    strategy_cls = load_strategy_class(spec["strategy_file"], spec["class_name"])
+    strategy_cls = load_strategy_class(
+        spec["strategy_file"], spec["class_name"], spec.get("strategy_code")
+    )
     out = work_dir / "out"
     out.mkdir(exist_ok=True)
     paths = {k: str(out / v) for k, v in OUTPUT_FILES.items()}

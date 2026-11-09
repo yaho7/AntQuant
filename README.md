@@ -10,7 +10,7 @@ public Python API from separate worker processes.
 | Area | What works in this release |
 | --- | --- |
 | Dashboard | Real Alpaca account: equity, cash, buying power, daily and period P&L, equity curve, allocation, holdings, recent trades, running tasks, system status |
-| Strategies | Register bundled or uploaded strategy classes, edit name/description/parameters, version history with restore, read-only code view, per-strategy backtests and fills |
+| Strategies | Scan Python uploads, start from an in-app template, edit parameters and uploaded code, restore versions, view per-strategy backtests and fills |
 | Backtesting | Real LumiBot backtests (Yahoo or Alpaca data) in a subprocess, progress, timeout, queue, metrics, equity and drawdown charts, trade list, CSV export, LumiBot tearsheet files |
 | Trading | Alpaca paper and opt-in live trading, with start, pause, resume, stop, emergency stop and account liquidation |
 | Logs | System, API error, audit and per-task logs with level filter, search, auto-refresh and download |
@@ -100,8 +100,9 @@ container user first: `mkdir data && sudo chown -R 10001:10001 data`, then use
 
 ### Your own strategies
 
-Upload a `.py` file on the Strategies page, or copy files into the volume's `strategies/`
-folder (they show up under "From strategy folder"). A strategy is a normal LumiBot class:
+In Strategies → Add strategy, click **Upload and scan** and choose a `.py` file. AntQuant
+reads its strategy classes and default parameters without running it. You can also use the
+in-app template or register files from the volume's `strategies/` folder.
 
 ```python
 from lumibot.strategies import Strategy
@@ -113,8 +114,18 @@ class MyStrategy(Strategy):
         self.sleeptime = "1D"
 
     def on_trading_iteration(self):
-        ...
+        symbol = self.parameters["symbol"]
+        self.log_message(f"{symbol}: {self.get_last_price(symbol)}")
 ```
+
+Put editable defaults in the class-level `parameters` dictionary and read the configured
+values from `self.parameters`. AntQuant supplies the selected broker account via
+`self.broker`. Use LumiBot's `self.create_order` and `self.submit_order` to apply trading
+controls and sync eligible fills to Wealthfolio.
+
+Edit uploaded code on the **Code** tab, scan it, and save it as a new version. The
+**Versions** tab can restore saved code and parameters. Each run uses the version selected
+when the task was created.
 
 > **Security:** strategy code is trusted administrator code. It runs in its own process with
 > the same permissions as the server: it can read the data folder and use the broker keys.

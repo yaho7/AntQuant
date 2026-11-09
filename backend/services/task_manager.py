@@ -210,6 +210,7 @@ class TaskManager:
                 select(Task).where(
                     Task.kind == "backtest",
                     Task.strategy_id == strategy.id,
+                    Task.strategy_version == strategy.version,
                     Task.status.in_(ACTIVE),
                 )
             )
@@ -330,11 +331,13 @@ class TaskManager:
     def _launch(
         self, db: Session, task: Task, strategy: Strategy, creds: AlpacaConnection | None = None
     ) -> None:
-        from backend.services.strategy_service import StrategyError, resolve_source
+        from backend.services.strategy_service import StrategyError, run_source
 
         work_dir = Path(task.work_dir)
         try:
-            source = resolve_source(self.settings, strategy.source_path)
+            source, snapshot, class_name = run_source(
+                db, self.settings, strategy.id, task.strategy_version or strategy.version
+            )
         except StrategyError as exc:
             self._fail_now(db, task, exc.message)
             return
@@ -343,8 +346,9 @@ class TaskManager:
             "kind": task.kind,
             "mode": task.mode,
             "strategy_file": str(source),
-            "class_name": strategy.class_name,
-            "name": strategy.name,
+            "strategy_code": str(snapshot),
+            "class_name": class_name,
+            "name": task.strategy_name,
             **task.config,
         }
         (work_dir / "spec.json").write_text(json.dumps(spec))

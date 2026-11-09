@@ -72,7 +72,7 @@ def alpaca_config() -> dict[str, Any] | None:
     }
 
 
-def load_strategy_class(path: str, class_name: str) -> type:
+def load_strategy_class(path: str, class_name: str, snapshot: str | None = None) -> type:
     from lumibot.strategies import Strategy
 
     file_path = Path(path)
@@ -81,7 +81,12 @@ def load_strategy_class(path: str, class_name: str) -> type:
         raise ImportError(f"Cannot load strategy file {file_path.name}")
     module = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = module
-    spec.loader.exec_module(module)
+    if snapshot is None:
+        spec.loader.exec_module(module)
+    else:
+        # Use the pinned code in the worker while preserving the strategy's original __file__.
+        compiled = compile(Path(snapshot).read_bytes(), snapshot, "exec")
+        exec(compiled, module.__dict__)  # noqa: S102 - run trusted administrator strategy code
     cls = getattr(module, class_name, None)
     if not isinstance(cls, type) or not issubclass(cls, Strategy):
         raise TypeError(f"{class_name} in {file_path.name} is not a LumiBot Strategy subclass")

@@ -89,8 +89,18 @@ export interface StrategyVersion {
   source_path: string;
   class_name: string;
   code_sha256: string;
+  code_available: boolean;
   note: string;
   created_at: string | null;
+}
+
+export interface StrategySource {
+  source_path: string;
+  sha256: string;
+  code: string;
+  editable: boolean;
+  modified: boolean;
+  version: number;
 }
 
 export interface Metrics {

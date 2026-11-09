@@ -62,6 +62,7 @@ export function ParamsEditor({ value, onChange, id }: Props) {
         </>
       )}
       <Button type="button" id={advanced ? undefined : id} size="sm" variant="ghost" className="justify-self-start"
+        aria-label={t(advanced ? "Parameter form" : "Advanced JSON")} aria-expanded={advanced}
         onClick={() => { setAdvanced(!advanced); setEmptyNumbers([]); onChange(null, null); }}>
         {t(advanced ? "Parameter form" : "Advanced JSON")}
       </Button>

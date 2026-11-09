@@ -81,8 +81,18 @@ class StrategyUpdate(BaseModel):
     description: str | None = Field(default=None, max_length=4000)
     parameters: dict[str, ParamValue] | None = None
     note: str = Field(default="", max_length=255)
+    expected_version: int | None = Field(default=None, ge=1)
 
     _v = field_validator("parameters")(lambda v: v if v is None else _check_params(v))
+
+
+class StrategySourceUpdate(StrategyCode):
+    class_name: str = Field(max_length=128, pattern=r"^[A-Za-z_][A-Za-z0-9_]*$")
+    parameters: dict[str, ParamValue]
+    expected_version: int = Field(ge=1)
+    acknowledge_risk: bool = False
+
+    _v = field_validator("parameters")(_check_params)
 
 
 class BacktestCreate(BaseModel):

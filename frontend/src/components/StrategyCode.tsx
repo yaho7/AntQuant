@@ -1,7 +1,7 @@
 import * as React from "react";
 import { t } from "@/lib/i18n";
 import { api } from "@/services/api";
-import type { DiscoveredStrategy } from "@/types/api";
+import type { DiscoveredStrategy, Params } from "@/types/api";
 
 const PythonEditor = React.lazy(() => import("@/components/PythonEditor"));
 
@@ -38,6 +38,14 @@ export async function scanStrategyCode(code: string, filename: string): Promise<
       : t(result.error));
   }
   return result.classes;
+}
+
+export function mergeScannedParameters(item: DiscoveredStrategy, current: Params): Params {
+  if (!item.parameters_parsed || Object.keys(item.parameters).length === 0) return current;
+  const type = (value: unknown) => value === null ? "null" : Array.isArray(value) ? "array" : typeof value;
+  return Object.fromEntries(Object.entries(item.parameters).map(([key, fallback]) => [
+    key, Object.hasOwn(current, key) && type(current[key]) === type(fallback) ? current[key] : fallback,
+  ]));
 }
 
 export function StrategyCodeGuide() {

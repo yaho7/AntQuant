@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
 from backend.api.deps import client_ip, get_db, require_session, settings_dep
@@ -13,7 +14,13 @@ from backend.api.serializers import strategy_out, task_out, version_out
 from backend.core.audit import audit
 from backend.core.config import Settings
 from backend.models import BacktestResult, Strategy, StrategyVersion, Task
-from backend.schemas import StrategyCode, StrategyCreate, StrategyImport, StrategyUpdate
+from backend.schemas import (
+    StrategyCode,
+    StrategyCreate,
+    StrategyImport,
+    StrategySourceUpdate,
+    StrategyUpdate,
+)
 from backend.services import strategy_service as svc
 from backend.services.strategy_service import StrategyError
 
@@ -26,6 +33,14 @@ def _get(db: Session, strategy_id: int) -> Strategy:
     strategy = db.get(Strategy, strategy_id)
     if strategy is None:
         raise HTTPException(404, "Strategy not found.")
+    return strategy
+
+
+def _get_for_update(db: Session, strategy_id: int, expected_version: int | None = None) -> Strategy:
+    db.execute(text("BEGIN IMMEDIATE"))
+    strategy = _get(db, strategy_id)
+    if expected_version is not None and strategy.version != expected_version:
+        raise HTTPException(409, "This strategy was updated. Reload it before saving.")
     return strategy
 
 
@@ -166,7 +181,7 @@ def update(
     db: Session = Depends(get_db),
     settings: Settings = Depends(settings_dep),
 ) -> dict[str, Any]:
-    strategy = _get(db, strategy_id)
+    strategy = _get_for_update(db, strategy_id, body.expected_version)
     strategy = _wrap(
         lambda: svc.update_strategy(
             db,
@@ -201,14 +216,21 @@ def archive(
 
 
 @router.get("/{strategy_id}/versions")
-def versions(strategy_id: int, db: Session = Depends(get_db)) -> list[dict[str, Any]]:
+def versions(
+    strategy_id: int,
+    db: Session = Depends(get_db),
+    settings: Settings = Depends(settings_dep),
+) -> list[dict[str, Any]]:
     _get(db, strategy_id)
     rows = db.scalars(
         select(StrategyVersion)
         .where(StrategyVersion.strategy_id == strategy_id)
         .order_by(StrategyVersion.version.desc())
     )
-    return [version_out(v) for v in rows]
+    return [
+        {**version_out(v), "code_available": svc.version_code(settings, v) is not None}
+        for v in rows
+    ]
 
 
 @router.post("/{strategy_id}/versions/{version}/restore")
@@ -216,17 +238,24 @@ def restore_version(
     strategy_id: int,
     version: int,
     request: Request,
+    parameters_only: bool = False,
     db: Session = Depends(get_db),
     settings: Settings = Depends(settings_dep),
 ) -> dict[str, Any]:
-    strategy = _get(db, strategy_id)
-    snap = db.scalar(
-        select(StrategyVersion).where(
-            StrategyVersion.strategy_id == strategy_id, StrategyVersion.version == version
-        )
-    )
+    strategy = _get_for_update(db, strategy_id)
+    snap = svc.get_version(db, strategy_id, version)
     if snap is None:
         raise HTTPException(404, "Version not found.")
+    code = (
+        _wrap(lambda: svc.current_code(db, settings, strategy))
+        if parameters_only
+        else svc.version_code(settings, snap)
+    )
+    if code is None:
+        raise HTTPException(
+            409, "Code for this older version is unavailable. Restore its parameters only."
+        )
+    restored = "parameters" if parameters_only else "code and parameters"
     strategy = _wrap(
         lambda: svc.update_strategy(
             db,
@@ -234,7 +263,10 @@ def restore_version(
             strategy,
             description=snap.description,
             parameters=snap.parameters,
-            note=f"Restored parameters from v{version}",
+            content=code,
+            class_name=None if parameters_only else snap.class_name,
+            source_path=None if parameters_only else snap.source_path,
+            note=f"Restored {restored} from v{version}",
         )
     )
     audit(db, "strategy.restore", strategy.name, {"from": version}, client_ip(request))
@@ -246,12 +278,53 @@ def source(
     strategy_id: int, db: Session = Depends(get_db), settings: Settings = Depends(settings_dep)
 ) -> dict[str, Any]:
     strategy = _get(db, strategy_id)
-    path = _wrap(lambda: svc.resolve_source(settings, strategy.source_path))
+    code = _wrap(lambda: svc.current_code(db, settings, strategy))
+    sha = hashlib.sha256(code).hexdigest()
+    version = svc.get_version(db, strategy.id, strategy.version)
+    editable = svc.editable_source(strategy.source_path)
+    modified = version is None or version.code_sha256 != sha
+    if not editable:
+        path = _wrap(lambda: svc.resolve_source(settings, strategy.source_path, must_exist=False))
+        modified = modified or (path.is_file() and path.read_bytes() != code)
     return {
         "source_path": strategy.source_path,
-        "sha256": svc.file_sha256(path),
-        "code": path.read_text(encoding="utf-8", errors="replace"),
+        "sha256": sha,
+        "code": code.decode("utf-8", errors="replace"),
+        "editable": editable,
+        "modified": modified,
+        "version": strategy.version,
     }
+
+
+@router.put("/{strategy_id}/source")
+def save_source(
+    strategy_id: int,
+    body: StrategySourceUpdate,
+    request: Request,
+    db: Session = Depends(get_db),
+    settings: Settings = Depends(settings_dep),
+) -> dict[str, Any]:
+    _require_trusted_code(body.acknowledge_risk)
+    code = body.code.encode("utf-8")
+    classes = _wrap(lambda: svc.scan_code(body.filename, code))
+    if not any(item.class_name == body.class_name for item in classes):
+        raise HTTPException(400, "Select a strategy class found in this file.")
+    strategy = _get_for_update(db, strategy_id, body.expected_version)
+    if not svc.editable_source(strategy.source_path):
+        raise HTTPException(409, "Only uploaded strategies can be edited here.")
+    strategy = _wrap(
+        lambda: svc.update_strategy(
+            db,
+            settings,
+            strategy,
+            content=code,
+            class_name=body.class_name,
+            parameters=body.parameters,
+            note="Updated code",
+        )
+    )
+    audit(db, "strategy.source", strategy.name, {"version": strategy.version}, client_ip(request))
+    return strategy_out(strategy)
 
 
 @router.get("/{strategy_id}/performance")
