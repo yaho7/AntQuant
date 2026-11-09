@@ -21,6 +21,7 @@ from backend.schemas import (
     StrategySourceUpdate,
     StrategyUpdate,
 )
+from backend.services import strategy_checks
 from backend.services import strategy_service as svc
 from backend.services.strategy_service import StrategyError
 
@@ -78,6 +79,15 @@ def discover(settings: Settings = Depends(settings_dep)) -> list[dict[str, Any]]
     return [d.to_dict() for d in svc.discover(settings)]
 
 
+@router.get("/discover/source")
+def discovered_source(
+    source_path: str, settings: Settings = Depends(settings_dep)
+) -> dict[str, str]:
+    """The text of a file in a strategy folder, so it can be checked before it is added."""
+    path = _wrap(lambda: svc.resolve_source(settings, source_path))
+    return {"source_path": source_path, "code": path.read_text("utf-8", errors="replace")}
+
+
 @router.post("")
 def create(
     body: StrategyCreate,
@@ -102,13 +112,17 @@ def create(
 
 @router.post("/scan")
 def scan(body: StrategyCode) -> dict[str, Any]:
+    """Strategy classes, problems that would stop the code in AntQuant, and a safe fix."""
+    content = body.code.encode("utf-8")
+    empty: dict[str, Any] = {"classes": [], "issues": [], "fix": None}
     try:
-        found = svc.scan_code(body.filename, body.code.encode("utf-8"))
+        found = svc.scan_code(body.filename, content)
     except svc.StrategySyntaxError as exc:
-        return {"classes": [], "error": exc.message, "line": exc.line, "reason": exc.reason}
+        return {**empty, "error": exc.message, "line": exc.line, "reason": exc.reason}
     except StrategyError as exc:
-        return {"classes": [], "error": exc.message}
-    return {"classes": [item.to_dict() for item in found]}
+        return {**empty, "error": exc.message}
+    report = strategy_checks.check(content, found)
+    return {"classes": [item.to_dict() for item in found], **report.to_dict()}
 
 
 def _require_trusted_code(acknowledge_risk: bool) -> None:
