@@ -3,11 +3,12 @@ import { Activity, KeyRound, ShieldCheck } from "lucide-react";
 import * as React from "react";
 import { useNavigate } from "react-router-dom";
 import { AlpacaKeysForm } from "@/components/AlpacaKeysForm";
+import { LanguageSelect } from "@/components/LanguageSelect";
 import { Button } from "@/components/ui/button";
-import { Alert, Card, Field, Input, Select } from "@/components/ui/primitives";
+import { Alert, Card, Field, Input } from "@/components/ui/primitives";
 import { useAuth } from "@/hooks/useAuth";
 import { api, ApiError } from "@/services/api";
-import { getLocale, LOCALES, setLocale, t, type Locale } from "@/lib/i18n";
+import { getLocale, setLocale, t } from "@/lib/i18n";
 
 function Shell({ children, title, subtitle }: {
   children: React.ReactNode;
@@ -119,13 +120,10 @@ export function SetupPage() {
         }}
       >
         <Field label={t("Language")} htmlFor="setup-language">
-          <Select id="setup-language" value={locale} onChange={(event) => {
-            const next = event.target.value as Locale;
+          <LanguageSelect id="setup-language" value={locale} onChange={(next) => {
             setLocale(next, false);
             setSelectedLocale(next);
-          }}>
-            {LOCALES.map(({ id, label, intl }) => <option key={id} value={id} lang={intl}>{label}</option>)}
-          </Select>
+          }} />
         </Field>
         <Field label={t("Username")} htmlFor="su">
           <Input id="su" autoComplete="username" value={form.username} required

@@ -225,7 +225,7 @@ never reaches a published image.
 * The Alpaca data source for backtests is wired through LumiBot but has not been run in CI
   (it needs keys). Yahoo backtests are tested end to end.
 * Images are built for `linux/amd64` only for now.
-* The UI ships in English and Simplified Chinese (switch with the language button). Server error messages are still English.
+* Choose English or Simplified Chinese from the language menu. Some server errors are in English.
 
 ## License
 

@@ -2,7 +2,6 @@ import {
   Activity,
   CandlestickChart,
   Eye,
-  Languages,
   EyeOff,
   FlaskConical,
   LayoutDashboard,
@@ -15,6 +14,7 @@ import {
   Workflow,
 } from "lucide-react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
+import { LanguageSelect } from "@/components/LanguageSelect";
 import { useAuth } from "@/hooks/useAuth";
 import { usePrivacy } from "@/hooks/usePrivacy";
 import { type Theme, useTheme } from "@/hooks/useTheme";
@@ -104,9 +104,7 @@ export function AppLayout() {
           <RailButton label={privacy ? t("Show amounts") : t("Hide amounts")} onClick={togglePrivacy} pressed={privacy}>
             {privacy ? <EyeOff /> : <Eye />}
           </RailButton>
-          <RailButton label={getLocale() === "zh" ? "English" : "中文"} onClick={() => setLocale(getLocale() === "zh" ? "en" : "zh")}>
-            <Languages />
-          </RailButton>
+          <LanguageSelect className="h-8 w-[4.5rem] px-1 text-xs" value={getLocale()} onChange={setLocale} />
           <RailButton label={`Theme: ${theme}`} onClick={() => setTheme(NEXT_THEME[theme])}>
             <ThemeIcon />
           </RailButton>
@@ -118,18 +116,16 @@ export function AppLayout() {
 
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-30 flex h-12 items-center gap-2 border-b bg-background/85 px-4 backdrop-blur md:hidden">
-          <div className="flex size-7 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+          <div className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
             <Activity className="size-4" />
           </div>
-          <span className="text-sm font-semibold">{t("LumiBot UI")}</span>
-          <div className="ml-auto flex">
+          <span className="min-w-0 truncate text-sm font-semibold">{t("LumiBot UI")}</span>
+          <div className="ml-auto flex shrink-0 items-center">
             <RailButton label={privacy ? t("Show amounts") : t("Hide amounts")} onClick={togglePrivacy} pressed={privacy}>
               {privacy ? <EyeOff /> : <Eye />}
             </RailButton>
-            <RailButton label={getLocale() === "zh" ? "English" : "中文"} onClick={() => setLocale(getLocale() === "zh" ? "en" : "zh")}>
-            <Languages />
-          </RailButton>
-          <RailButton label={`Theme: ${theme}`} onClick={() => setTheme(NEXT_THEME[theme])}>
+            <LanguageSelect className="h-8 w-[4.5rem] px-1 text-xs" value={getLocale()} onChange={setLocale} />
+            <RailButton label={`Theme: ${theme}`} onClick={() => setTheme(NEXT_THEME[theme])}>
               <ThemeIcon />
             </RailButton>
             <RailButton label={t("Sign out")} onClick={() => void logout()}>
