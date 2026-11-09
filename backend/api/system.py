@@ -58,7 +58,12 @@ def _alpaca_status(db: Session) -> dict[str, Any]:
 
 @router.get("/settings")
 def get_settings_view(db: Session = Depends(get_db)) -> dict[str, Any]:
-    return {"settings": all_settings(db), "alpaca": _alpaca_status(db)}
+    return {
+        "settings": all_settings(db),
+        "active_broker": broker_service.selected_broker(db),
+        "alpaca": _alpaca_status(db),
+        "schwab": broker_service.schwab_status(db),
+    }
 
 
 @router.put("/settings/backtest_defaults")
@@ -103,6 +108,7 @@ def put_alpaca(
     db.execute(text("BEGIN IMMEDIATE"))
     if db.scalar(select(Task.id).where(Task.kind == "trading", Task.status.in_(ACTIVE)).limit(1)):
         raise HTTPException(409, "Stop all trading strategies before replacing the keys.")
+    broker_service.select_broker(db, "alpaca")
     broker_service.save_alpaca_credentials(
         db, body.api_key, body.api_secret, body.paper, body.endpoint
     )
@@ -165,7 +171,14 @@ def system_status(db: Session = Depends(get_db)) -> dict[str, Any]:
         "ui_version": __version__,
         "lumibot_version": version,
         "lumibot_verified": version in VERIFIED_LUMIBOT_VERSIONS,
-        "broker": _alpaca_status(db),
+        "broker": {
+            **(
+                broker_service.schwab_status(db)
+                if broker_service.selected_broker(db) == "schwab"
+                else _alpaca_status(db)
+            ),
+            "name": broker_service.selected_broker(db),
+        },
         "uptime_seconds": int(time.time() - STARTED),
         "active_tasks": [task_out(t) for t in active],
         "events": [

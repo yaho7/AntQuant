@@ -188,6 +188,17 @@ export interface EquityPoint {
   profit_loss: number | null;
 }
 
+export type BrokerName = "alpaca" | "schwab";
+
+export interface SchwabStatus {
+  configured: boolean;
+  endpoint: string;
+  account_hint: string | null;
+  callback_url: string | null;
+  authorization_expires_at: string | null;
+  authorization_expired: boolean;
+}
+
 export interface AlpacaStatus {
   configured: boolean;
   api_key_hint: string | null;
@@ -199,7 +210,7 @@ export interface SystemStatus {
   ui_version: string;
   lumibot_version: string | null;
   lumibot_verified: boolean;
-  broker: AlpacaStatus;
+  broker: { name: BrokerName; configured: boolean; paper?: boolean };
   uptime_seconds: number;
   active_tasks: Task[];
   events: { time: string; level: string; source: string; message: string }[];
@@ -240,7 +251,9 @@ export interface SettingsView {
     max_concurrent_backtests: number;
     log_retention_days: number;
   };
+  active_broker: BrokerName;
   alpaca: AlpacaStatus;
+  schwab: SchwabStatus;
 }
 
 export interface LogEntry {

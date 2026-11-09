@@ -13,7 +13,6 @@ import {
   EmptyState,
   ErrorState,
   LoadingState,
-  ModeBadge,
   PageHeader,
   StatCard,
   StatusBadge,
@@ -83,7 +82,7 @@ export function DashboardPage() {
           <Alert tone="loss" className="mb-8">
             <AlertTriangle />
             <div>
-              <p className="font-medium">{t("Could not load the Alpaca account")}</p>
+              <p className="font-medium">{t("Could not load the broker account")}</p>
               <p className="text-muted-foreground">{t(summary.data.error)}</p>
             </div>
           </Alert>
@@ -93,8 +92,7 @@ export function DashboardPage() {
       {account && (
         <section className="mb-10" aria-label={t("Account overview")}>
           <p className="mb-1 flex items-center gap-2 text-xs text-muted-foreground">
-            Alpaca · {account.account_id}
-            <ModeBadge mode={account.paper ? "paper" : "live"} />
+            {t(account.broker === "schwab" ? "Charles Schwab" : "Alpaca")} · {account.account_id}
           </p>
           <h1 className="font-display sensitive text-5xl font-normal tracking-tight sm:text-6xl">
             {money(account.equity, account.currency)}
@@ -113,7 +111,7 @@ export function DashboardPage() {
           </div>
           {account.trading_blocked && (
             <Alert tone="warning" className="mt-4">
-              <AlertTriangle /> {t("Alpaca reports trading is blocked on this account.")} </Alert>
+              <AlertTriangle /> {t("The broker reports trading is blocked on this account.")} </Alert>
           )}
 
           <div className="-mx-4 mt-6 sm:-mx-8">
@@ -122,7 +120,7 @@ export function DashboardPage() {
             ) : history.error ? (
               <ErrorState error={history.error} onRetry={() => history.refetch()} />
             ) : equitySeries[0]!.data.length < 2 ? (
-              <EmptyState title={t("Not enough history yet")} description={t("Alpaca has no portfolio history for this period.")} />
+              <EmptyState title={t("Not enough history yet")} description={t("The broker has no portfolio history for this period.")} />
             ) : (
               <TimeSeriesChart series={equitySeries} showRanges={false} minimal height={240} />
             )}
@@ -264,7 +262,7 @@ export function DashboardPage() {
                   <dt className="text-muted-foreground">{t("Broker")}</dt>
                   <dd className="flex items-center gap-1">
                     {status.data.broker.configured ? (
-                      <><CheckCircle2 className="size-3.5 text-gain" /> Alpaca <ModeBadge mode={status.data.broker.paper ? "paper" : "live"} /></>
+                      <><CheckCircle2 className="size-3.5 text-gain" /> {t(status.data.broker.name === "schwab" ? "Charles Schwab" : "Alpaca")}</>
                     ) : (
                       <><CircleSlash className="size-3.5 text-muted-foreground" /> {t("Not connected")}</>
                     )}

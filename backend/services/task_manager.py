@@ -33,7 +33,8 @@ from sqlalchemy.orm import Session, sessionmaker
 from backend.core.config import PROJECT_ROOT, Settings
 from backend.core.logging import redact
 from backend.models import BacktestResult, Strategy, SystemEvent, Task
-from backend.services.broker_service import AlpacaConnection
+from backend.services.broker_service import AlpacaConnection, selected_broker, trading_connection
+from backend.services.schwab_service import AUTH_REQUIRED, SchwabConnection
 from backend.services.settings_store import get_setting
 from backend.workers.common import (
     ALPACA_ENDPOINT_ENV,
@@ -213,17 +214,23 @@ class TaskManager:
         self.tick()
         return task
 
-    def start_trading(self, db: Session, strategy: Strategy, mode: str) -> Task:
+    def start_trading(
+        self, db: Session, strategy: Strategy, mode: str, broker: str | None = None
+    ) -> Task:
         if mode == "live" and not self.settings.live_trading_enabled:
             raise TaskError("Live trading is disabled on this server.", 403)
         with self._lock:
             # Serialize credential changes with the creation of an active trading task.
             db.execute(text("BEGIN IMMEDIATE"))
-            creds = self.credentials(db)
+            if broker is not None and selected_broker(db) != broker:
+                raise TaskError("The active broker changed. Refresh the page and try again.", 409)
+            creds = trading_connection(db)
             if creds is None:
-                raise TaskError("Connect an Alpaca account in Settings first.", 400)
+                raise TaskError("Connect a broker account in Settings first.", 400)
             if mode != ("paper" if creds.paper else "live"):
-                raise TaskError("Trading mode must match the connected Alpaca account.", 409)
+                raise TaskError("Trading mode must match the connected broker account.", 409)
+            if isinstance(creds, SchwabConnection) and creds.expires_at <= time.time():
+                raise TaskError(AUTH_REQUIRED, 401)
             active = db.scalar(
                 select(Task).where(
                     Task.kind == "trading",
@@ -234,8 +241,10 @@ class TaskManager:
             if active is not None:
                 raise TaskError("This strategy is already running.", 409)
             config = {"parameters": strategy.parameters}
+            if isinstance(creds, SchwabConnection):
+                config.update(broker="schwab", broker_connection=creds.id)
             task = self._new_task(db, strategy, "trading", mode, config)
-            self._launch(db, task, strategy, creds)
+            self._launch(db, task, strategy, creds if isinstance(creds, AlpacaConnection) else None)
         return task
 
     # ------------------------------------------------------------ control
@@ -322,10 +331,11 @@ class TaskManager:
         env = {
             k: v
             for k, v in os.environ.items()
-            if not k.startswith(("ALPACA_", "LUMIBOT_UI_ALPACA_"))
+            if not k.startswith(("ALPACA_", "LUMIBOT_UI_ALPACA_", "SCHWAB_"))
         }
         env["PYTHONPATH"] = str(PROJECT_ROOT)
         env["PYTHONUNBUFFERED"] = "1"
+        env["LUMIBOT_UI_DATA_DIR"] = str(self.settings.data_dir.resolve())
         if task.kind == "backtest":
             creds = self.credentials(db)
         if creds:

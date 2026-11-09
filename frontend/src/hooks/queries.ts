@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { api, qs } from "@/services/api";
 import type {
   AccountSummary,
+  BrokerName,
   Backtest,
   EquityPoint,
   Order,
@@ -75,7 +76,7 @@ export const useSettings = () =>
 export const useTradingMode = () =>
   useQuery({
     queryKey: ["trading", "mode"],
-    queryFn: () => api.get<{ mode: "paper" | "live"; live_available: boolean }>("/api/trading/mode"),
+    queryFn: () => api.get<{ mode: "paper" | "live"; live_available: boolean; broker: BrokerName; can_liquidate: boolean }>("/api/trading/mode"),
   });
 
 export const useTradingTasks = () =>

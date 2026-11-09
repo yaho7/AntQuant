@@ -10,6 +10,7 @@ from backend.adapters.brokers.base import Account, EquityPoint, Order, Position
 class MockBroker:
     paper = True
     name = "mock"
+    can_liquidate = True
 
     def __init__(self) -> None:
         self.account = Account(

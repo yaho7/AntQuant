@@ -4,16 +4,28 @@ from __future__ import annotations
 
 import hashlib
 import threading
+import time
 from dataclasses import dataclass
+from datetime import UTC, datetime
+from typing import Literal
 
 from sqlalchemy.orm import Session
 
 from backend.adapters.brokers.alpaca import AlpacaAdapter
 from backend.adapters.brokers.base import BrokerAdapter
 from backend.adapters.brokers.endpoints import ALPACA_LIVE_URL, ALPACA_PAPER_URL, is_paper_endpoint
+from backend.adapters.brokers.schwab import SchwabAdapter
 from backend.core.logging import register_secret
-from backend.core.secrets import delete_secrets, get_secrets, set_secret
-from backend.services.settings_store import ALPACA_ENDPOINT, ALPACA_KEY, ALPACA_MODE, ALPACA_SECRET
+from backend.core.secrets import delete_secrets, get_secrets, mask, set_secret
+from backend.services import schwab_service
+from backend.services.settings_store import (
+    ALPACA_ENDPOINT,
+    ALPACA_KEY,
+    ALPACA_MODE,
+    ALPACA_SECRET,
+    get_setting,
+    set_setting,
+)
 
 _lock = threading.Lock()
 _cached: tuple[str, BrokerAdapter] | None = None
@@ -64,12 +76,42 @@ def remove_alpaca_credentials(db: Session) -> None:
     delete_secrets(db, ALPACA_KEY, ALPACA_SECRET, ALPACA_MODE, ALPACA_ENDPOINT)
 
 
+def selected_broker(db: Session) -> Literal["alpaca", "schwab"]:
+    return "schwab" if get_setting(db, "active_broker") == "schwab" else "alpaca"
+
+
+def select_broker(db: Session, broker: Literal["alpaca", "schwab"]) -> None:
+    set_setting(db, "active_broker", broker, commit=False)
+
+
+def trading_connection(db: Session) -> AlpacaConnection | schwab_service.SchwabConnection | None:
+    if selected_broker(db) == "schwab":
+        return schwab_service.connection(db)
+    return alpaca_credentials(db)
+
+
+def schwab_status(db: Session) -> dict:
+    conn = schwab_service.connection(db)
+    return {
+        "configured": conn is not None,
+        "endpoint": schwab_service.SCHWAB_URL,
+        "account_hint": mask(conn.account_number) if conn else None,
+        "callback_url": conn.callback if conn else None,
+        "authorization_expires_at": datetime.fromtimestamp(conn.expires_at, UTC).isoformat()
+        if conn
+        else None,
+        "authorization_expired": bool(conn and conn.expires_at <= time.time()),
+    }
+
+
 def get_broker(db: Session) -> BrokerAdapter | None:
     """Return the configured broker, or None when no credentials are stored."""
     global _cached
     if _override is not None:
         return _override
-    creds = alpaca_credentials(db)
+    creds = trading_connection(db)
+    if isinstance(creds, schwab_service.SchwabConnection):
+        return SchwabAdapter(creds.id)
     if creds is None:
         return None
     fingerprint = hashlib.sha256(

@@ -56,6 +56,7 @@ class RateLimiter:
 
 class AlpacaAdapter:
     name = "alpaca"
+    can_liquidate = True
 
     def __init__(
         self,

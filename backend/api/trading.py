@@ -17,7 +17,7 @@ from backend.core.audit import audit
 from backend.core.config import Settings
 from backend.models import Strategy, Task
 from backend.schemas import LiquidateRequest, TradingStart
-from backend.services.broker_service import alpaca_credentials, get_broker
+from backend.services.broker_service import get_broker, selected_broker, trading_connection
 from backend.services.task_manager import ACTIVE, TaskError, TaskManager
 
 router = APIRouter(prefix="/api/trading", tags=["trading"], dependencies=[Depends(require_session)])
@@ -45,10 +45,12 @@ def _heartbeat(task: Task) -> dict[str, Any] | None:
 def mode(
     db: Session = Depends(get_db), settings: Settings = Depends(settings_dep)
 ) -> dict[str, Any]:
-    creds = alpaca_credentials(db)
+    creds = trading_connection(db)
     live = creds is not None and not creds.paper
     return {
         "mode": "live" if live else "paper",
+        "broker": selected_broker(db),
+        "can_liquidate": selected_broker(db) == "alpaca",
         "live_available": settings.live_trading_enabled,
         "live_note": None
         if settings.live_trading_enabled
@@ -85,7 +87,7 @@ def start(
     if strategy is None or strategy.archived:
         raise HTTPException(404, "Strategy not found.")
     try:
-        task = tm.start_trading(db, strategy, body.mode)
+        task = tm.start_trading(db, strategy, body.mode, body.broker)
     except TaskError as exc:
         audit(db, "trading.start", strategy.name, {"error": exc.message}, ip, success=False)
         raise HTTPException(exc.status_code, exc.message) from exc
@@ -161,6 +163,8 @@ def liquidate(
     broker = get_broker(db)
     if broker is None:
         raise HTTPException(409, "No broker account is connected.")
+    if not broker.can_liquidate:
+        raise HTTPException(409, "Account-wide liquidation is unavailable for Schwab.")
     if not broker.paper and not settings.live_trading_enabled:
         raise HTTPException(403, "Live trading is disabled on this server.")
     phrase = LIQUIDATE_PHRASE if broker.paper else LIVE_LIQUIDATE_PHRASE

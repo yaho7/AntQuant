@@ -13,7 +13,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from backend import __version__
-from backend.api import account, auth, backtests, logs, strategies, system, trading
+from backend.api import account, auth, backtests, brokers, logs, strategies, system, trading
 from backend.core.config import Settings, get_settings
 from backend.core.db import init_engine, run_migrations, session_factory
 from backend.core.logging import setup_logging
@@ -112,6 +112,7 @@ def create_app(settings: Settings | None = None, start_tasks: bool = True) -> Fa
         trading.router,
         logs.router,
         system.router,
+        brokers.router,
     ):
         app.include_router(router)
 

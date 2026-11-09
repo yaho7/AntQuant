@@ -1,8 +1,10 @@
 import { useMutation } from "@tanstack/react-query";
-import { Activity, KeyRound, ShieldCheck } from "lucide-react";
+import { Activity, ShieldCheck } from "lucide-react";
 import * as React from "react";
 import { useNavigate } from "react-router-dom";
 import { AlpacaKeysForm } from "@/components/AlpacaKeysForm";
+import { BrokerPicker, SchwabForm } from "@/components/BrokerConnection";
+import type { BrokerName } from "@/types/api";
 import { LanguageSelect } from "@/components/LanguageSelect";
 import { Button } from "@/components/ui/button";
 import { Alert, Card, Field, Input } from "@/components/ui/primitives";
@@ -68,17 +70,15 @@ export function LoginPage() {
 export function ConnectBrokerPage() {
   const navigate = useNavigate();
   const finish = () => navigate("/", { replace: true });
+  const [broker, setBroker] = React.useState<BrokerName>("alpaca");
   return (
     <Shell
-      title={t("Connect Alpaca (optional)")}
+      title={t("Connect a broker (optional)")}
       subtitle={t("Step 2 of 2 · You can do this later in Settings.")}
     >
       <div className="grid gap-4">
-        <Alert tone="info">
-          <KeyRound />
-          <div>{t("Enter the endpoint and matching API keys. Keys are encrypted on the server.")}</div>
-        </Alert>
-        <AlpacaKeysForm onSaved={finish} />
+        <BrokerPicker value={broker} onChange={setBroker} />
+        {broker === "alpaca" ? <AlpacaKeysForm onSaved={finish} /> : <SchwabForm onSaved={finish} />}
         <Button variant="ghost" onClick={finish}>{t("Skip for now")}</Button>
       </div>
     </Shell>

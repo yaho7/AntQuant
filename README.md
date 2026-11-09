@@ -16,8 +16,8 @@ public Python API from separate worker processes.
 | Logs | System, API error, audit and per-task logs with level filter, search, auto-refresh and download |
 | Settings | Alpaca keys (write-only, encrypted), backtest defaults, timeouts, password, versions, LumiBot compatibility check, update check, audit log |
 
-Choose **Paper account** or **Live account** when entering your Alpaca keys. Both modes
-support account data and backtests. To allow real orders, set
+Choose Alpaca or Charles Schwab in the broker settings. For Alpaca, enter the trading
+endpoint and the matching API keys. To allow real orders, set
 `LUMIBOT_UI_LIVE_TRADING_ENABLED=true` in the server environment (under `environment`
 for the Compose service) and recreate the container.
 
@@ -47,7 +47,7 @@ docker compose up -d
 ```
 
 Open <http://127.0.0.1:8000>, choose your language and create the administrator account.
-You can then connect a paper or live Alpaca account or skip that step.
+You can then connect a broker account or skip that step.
 
 The port is bound to `127.0.0.1` on purpose. To reach it from other devices, put a reverse
 proxy in front of it (see below) instead of opening the port.
@@ -161,6 +161,19 @@ Browser ──HTTPS──> FastAPI (auth, CSRF, REST) ──> services ──> S
 | Emergency stop | Stop for every running strategy at once. | Kept |
 | Liquidate | Cancels open orders and closes **all** positions in the Alpaca account. Requires `LIQUIDATE` for paper or `LIQUIDATE LIVE` for live. | Closed |
 
+### Charles Schwab
+
+Create an approved Trader API app in the Schwab Developer Portal and register an HTTPS
+callback URL, such as `https://127.0.0.1:8182`. In **Settings → Broker connection**, select
+**Charles Schwab**, enter the app credentials and matching callback URL, then open the
+authorization link. Paste the full redirected URL into LumiBot UI and choose an account.
+
+LumiBot UI stores credentials encrypted and refreshes short-lived access tokens. Schwab
+requires browser reauthorization after seven days. Settings show the deadline and warn
+within 24 hours. Renewing the same account can update credentials for a running strategy.
+Schwab supports account data and live strategy orders. Account equity history and
+account-wide liquidation are available with Alpaca.
+
 ### Account vs. strategy results
 
 Alpaca reports one account. When several strategies share it, LumiBot UI shows equity,
@@ -218,7 +231,7 @@ never reaches a published image.
 
 ## Known limitations
 
-* One Alpaca account can be connected at a time.
+* One broker account is active at a time.
 * Per-strategy P&L on a shared account is not attributed.
 * Pause only filters orders placed through `submit_order` / `submit_orders`; code that calls
   the broker object directly bypasses it.

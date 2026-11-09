@@ -88,6 +88,7 @@ class EquityPoint:
 class BrokerAdapter(Protocol):
     name: str
     paper: bool
+    can_liquidate: bool
 
     def get_account(self) -> Account: ...
 

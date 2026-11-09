@@ -88,6 +88,7 @@ class BacktestCreate(BaseModel):
 class TradingStart(BaseModel):
     strategy_id: int
     mode: Literal["paper", "live"] = "paper"
+    broker: Literal["alpaca", "schwab"] | None = None
 
 
 class LiquidateRequest(BaseModel):

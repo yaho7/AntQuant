@@ -37,7 +37,7 @@ export function TradingPage() {
   const tasks = useTradingTasks();
   const { data: tradingMode } = useTradingMode();
   const live = tradingMode?.mode === "live";
-  const canLiquidate = connected && !!tradingMode && account.paper === !live &&
+  const canLiquidate = connected && tradingMode?.can_liquidate && account.paper === !live &&
     (!live || tradingMode.live_available);
   const [confirmEmergency, setConfirmEmergency] = React.useState(false);
   const [confirmLiquidate, setConfirmLiquidate] = React.useState(false);
@@ -68,13 +68,16 @@ export function TradingPage() {
     <>
       <PageHeader
         title={t("Trading")}
-        description={t("Strategy trading on your Alpaca account.")}
+        description={t("Strategy trading on your connected broker account.")}
         actions={
           <>
             <Button variant="outline" disabled={activeTasks.length === 0} onClick={() => setConfirmEmergency(true)}>
               <OctagonX /> {t("Emergency stop all")} </Button>
-            <Button variant="destructive" disabled={!canLiquidate} onClick={() => setConfirmLiquidate(true)}>
-              <Flame /> {t("Liquidate account")} </Button>
+            {tradingMode?.can_liquidate && (
+              <Button variant="destructive" disabled={!canLiquidate} onClick={() => setConfirmLiquidate(true)}>
+                <Flame /> {t("Liquidate account")}
+              </Button>
+            )}
           </>
         }
       />
@@ -173,7 +176,7 @@ export function TradingPage() {
               <QueryBoundary query={closedOrders}>{(o) => <OrdersTable orders={o} empty={t("No closed orders")} />}</QueryBoundary>
             </TabsContent>
           </Tabs>
-          <p className="border-t px-4 py-2 text-xs text-muted-foreground">{t("Account-level data from Alpaca. When several strategies share this account, positions are not split per strategy.")} </p>
+          <p className="border-t px-4 py-2 text-xs text-muted-foreground">{t("Account data comes from your broker. Strategies using the same account share these positions.")} </p>
         </Card>
       )}
 

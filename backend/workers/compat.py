@@ -81,12 +81,16 @@ def run_checks() -> list[dict[str, Any]]:
         return "Trader.add_strategy/run_all/stop_all present"
 
     def broker_api() -> str:
-        from lumibot.brokers import Alpaca
+        from lumibot.brokers import Alpaca, Schwab
 
         params = inspect.signature(Alpaca.__init__).parameters
         if "config" not in params:
             raise AttributeError("Alpaca(config=...) not supported")
-        return "lumibot.brokers.Alpaca(config) present"
+        if "trading_client" not in params:
+            raise AttributeError("Alpaca does not support a caller-supplied trading client")
+        if "config" not in inspect.signature(Schwab.__init__).parameters:
+            raise AttributeError("Schwab(config=...) not supported")
+        return "Alpaca and Schwab broker constructors present"
 
     def datasources() -> str:
         import lumibot.backtesting as bt
@@ -109,7 +113,7 @@ def run_checks() -> list[dict[str, Any]]:
 
     checks.append(_check("strategy_api", strategy_api))
     checks.append(_check("trader_api", trader_api))
-    checks.append(_check("alpaca_broker", broker_api))
+    checks.append(_check("broker_api", broker_api))
     checks.append(_check("backtest_data_sources", datasources))
     checks.append(_check("backtest_progress_file", progress_csv))
     return checks

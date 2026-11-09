@@ -39,7 +39,7 @@ export function TradingControls({
   };
   const start = useMutation({
     mutationFn: (mode: "paper" | "live") =>
-      api.post<Task>("/api/trading/start", { strategy_id: strategyId, mode }),
+      api.post<Task>("/api/trading/start", { strategy_id: strategyId, mode, broker: tradingMode?.broker }),
     onSuccess: (_task, mode) => {
       setConfirmLive(false);
       toast.success(mode === "live" ? "Live trading started" : "Paper trading started");
@@ -74,17 +74,17 @@ export function TradingControls({
           onClick={() => live ? setConfirmLive(true) : start.mutate("paper")}
           loading={start.isPending}
           disabled={!canStart}
-          title={t(!brokerConnected ? "Connect Alpaca in Settings first" :
+          title={t(!brokerConnected ? "Connect a broker in Settings first" :
             live && !canStart ? "Live trading is disabled on this server." :
               live ? "Start live trading" : "Start paper trading")}
         >
-          <Play /> {t(live ? "Start live" : "Start paper")}
+          <Play /> {t("Start strategy")}
         </Button>
         <ConfirmDialog
           open={confirmLive}
           onOpenChange={setConfirmLive}
           title={t("Start live trading?")}
-          description={t("This strategy can place real orders using your live Alpaca account.")}
+          description={t("This strategy can place real orders using the connected broker account.")}
           confirmLabel={t("Start live trading")}
           destructive
           loading={start.isPending}

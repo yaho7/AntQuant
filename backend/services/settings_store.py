@@ -14,6 +14,7 @@ DEFAULTS: dict[str, Any] = {
     "backtest_timeout_minutes": 120,
     "max_concurrent_backtests": 1,
     "log_retention_days": 30,
+    "active_broker": "alpaca",
 }
 
 ALPACA_KEY = "alpaca_api_key"
@@ -32,7 +33,7 @@ def get_setting(db: Session, key: str) -> Any:
     return row.value
 
 
-def set_setting(db: Session, key: str, value: Any) -> None:
+def set_setting(db: Session, key: str, value: Any, *, commit: bool = True) -> None:
     if key not in DEFAULTS:
         raise KeyError(key)
     row = db.get(SettingValue, key)
@@ -40,7 +41,8 @@ def set_setting(db: Session, key: str, value: Any) -> None:
         db.add(SettingValue(key=key, value=value))
     else:
         row.value = value
-    db.commit()
+    if commit:
+        db.commit()
 
 
 def all_settings(db: Session) -> dict[str, Any]:

@@ -1,4 +1,4 @@
-"""Run one LumiBot strategy against an Alpaca account.
+"""Run one LumiBot strategy against the selected broker account.
 
 Usage: python -m backend.workers.trading_worker <task_work_dir>
 
@@ -159,8 +159,7 @@ def make_managed_strategy(cls: type, work_dir: Path) -> type:
     return Managed
 
 
-def run(work_dir: Path) -> None:
-    spec = setup_worker(work_dir)
+def alpaca_broker(spec: dict[str, Any]):  # type: ignore[no-untyped-def]
     config = alpaca_config()
     if config is None:
         raise RuntimeError("Alpaca keys are not configured; set them in Settings.")
@@ -169,11 +168,7 @@ def run(work_dir: Path) -> None:
         raise RuntimeError("Trading mode must match the connected Alpaca account.")
 
     from lumibot.brokers import Alpaca
-    from lumibot.traders import Trader
 
-    strategy_cls = make_managed_strategy(
-        load_strategy_class(spec["strategy_file"], spec["class_name"]), work_dir
-    )
     from backend.adapters.brokers.endpoints import ALPACA_LIVE_URL, ALPACA_PAPER_URL
 
     endpoint = config["ENDPOINT"]
@@ -183,9 +178,16 @@ def run(work_dir: Path) -> None:
         client = TradingClient(
             config["API_KEY"], config["API_SECRET"], paper=config["PAPER"], url_override=endpoint
         )
-        broker = Alpaca(config, trading_client=client)
-    else:
-        broker = Alpaca(config)
+        return Alpaca(config, trading_client=client)
+    return Alpaca(config)
+
+
+def run_strategy(work_dir: Path, spec: dict[str, Any], broker: Any) -> None:
+    from lumibot.traders import Trader
+
+    strategy_cls = make_managed_strategy(
+        load_strategy_class(spec["strategy_file"], spec["class_name"]), work_dir
+    )
     strategy = strategy_cls(
         broker=broker,
         name=spec.get("name") or spec["class_name"],
@@ -199,10 +201,23 @@ def run(work_dir: Path) -> None:
         trader.stop_all()
 
     signal.signal(signal.SIGTERM, _graceful)
-    log.info("Starting %s trading %s (%s)", mode, spec["task_id"], spec["class_name"])
+    log.info("Starting %s trading %s (%s)", spec["mode"], spec["task_id"], spec["class_name"])
     started = time.monotonic()
     trader.run_all()
     log.info("Trader exited after %.0fs", time.monotonic() - started)
+
+
+def run(work_dir: Path) -> None:
+    spec = setup_worker(work_dir)
+    if spec.get("broker") == "schwab":
+        from backend.workers.schwab_broker import broker_session
+
+        if spec.get("mode") != "live":
+            raise RuntimeError("Schwab strategies require the live trading endpoint.")
+        with broker_session(spec["broker_connection"]) as broker:
+            run_strategy(work_dir, spec, broker)
+    else:
+        run_strategy(work_dir, spec, alpaca_broker(spec))
 
 
 def main() -> int:
