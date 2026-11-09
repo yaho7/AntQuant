@@ -4,7 +4,7 @@ import type { BrokerName, BrokerProfile, Task } from "@/types/api";
 export const profilePath = (id: string) => `/profiles/${encodeURIComponent(id)}`;
 
 export function providerLabel(provider: BrokerName) {
-  return provider === "schwab" ? "Schwab" : "Alpaca";
+  return provider === "schwab" ? "Charles Schwab" : "Alpaca";
 }
 
 export function profileLabel(profile: BrokerProfile) {
