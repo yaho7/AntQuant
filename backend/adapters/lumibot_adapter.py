@@ -104,29 +104,54 @@ def _base_name(node: ast.expr) -> str:
 
 def parse_strategy_file(path: Path, root_label: str, rel: str) -> list[DiscoveredStrategy]:
     """Find `class X(Strategy)` definitions in a file without importing it."""
-    raw = path.read_bytes()
     try:
-        tree = ast.parse(raw, filename=str(path))
+        return parse_strategy_source(path.read_bytes(), root_label, rel)
     except SyntaxError:
         return []
+
+
+def parse_strategy_source(raw: bytes, root_label: str, rel: str) -> list[DiscoveredStrategy]:
+    tree = ast.parse(raw, filename=rel)
+    compile(tree, rel, "exec")
     digest = hashlib.sha256(raw).hexdigest()
+    bases = {"Strategy"}
+    for stmt in tree.body:
+        if isinstance(stmt, ast.ImportFrom) and stmt.module in {
+            "lumibot.strategies",
+            "lumibot.strategies.strategy",
+        }:
+            bases.update(
+                alias.asname for alias in stmt.names if alias.name == "Strategy" and alias.asname
+            )
     found: list[DiscoveredStrategy] = []
     for node in tree.body:
         if not isinstance(node, ast.ClassDef):
             continue
-        if "Strategy" not in {_base_name(b) for b in node.bases}:
+        if bases.isdisjoint(_base_name(base) for base in node.bases):
             continue
         params: dict[str, Any] = {}
         parsed = True
         for stmt in node.body:
-            if isinstance(stmt, ast.Assign) and any(
-                isinstance(t, ast.Name) and t.id == "parameters" for t in stmt.targets
+            targets = (
+                stmt.targets
+                if isinstance(stmt, ast.Assign)
+                else ([stmt.target] if isinstance(stmt, ast.AnnAssign) else [])
+            )
+            if any(
+                isinstance(target, ast.Name) and target.id == "parameters" for target in targets
             ):
                 try:
                     value = ast.literal_eval(stmt.value)
-                    params = value if isinstance(value, dict) else {}
-                except ValueError:
+                    if not isinstance(value, dict) or not all(
+                        isinstance(key, str) and key.isidentifier() for key in value
+                    ):
+                        raise ValueError("Parameters must be a dictionary with valid names.")
+                    params = json.loads(json.dumps(value, allow_nan=False))
+                except (SyntaxError, TypeError, ValueError):
+                    params = {}
                     parsed = False
+                else:
+                    parsed = True
         found.append(
             DiscoveredStrategy(
                 file=rel,

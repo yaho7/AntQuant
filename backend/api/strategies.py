@@ -13,7 +13,7 @@ from backend.api.serializers import strategy_out, task_out, version_out
 from backend.core.audit import audit
 from backend.core.config import Settings
 from backend.models import BacktestResult, Strategy, StrategyVersion, Task
-from backend.schemas import StrategyCreate, StrategyUpdate
+from backend.schemas import StrategyCode, StrategyCreate, StrategyImport, StrategyUpdate
 from backend.services import strategy_service as svc
 from backend.services.strategy_service import StrategyError
 
@@ -85,6 +85,53 @@ def create(
     return strategy_out(strategy)
 
 
+@router.post("/scan")
+def scan(body: StrategyCode) -> dict[str, Any]:
+    try:
+        found = svc.scan_code(body.filename, body.code.encode("utf-8"))
+    except svc.StrategySyntaxError as exc:
+        return {"classes": [], "error": exc.message, "line": exc.line, "reason": exc.reason}
+    except StrategyError as exc:
+        return {"classes": [], "error": exc.message}
+    return {"classes": [item.to_dict() for item in found]}
+
+
+def _require_trusted_code(acknowledge_risk: bool) -> None:
+    if not acknowledge_risk:
+        raise HTTPException(
+            400, "Confirm that you trust this code: it runs with the server's permissions."
+        )
+
+
+@router.post("/import")
+def import_strategy(
+    body: StrategyImport,
+    request: Request,
+    db: Session = Depends(get_db),
+    settings: Settings = Depends(settings_dep),
+) -> dict[str, Any]:
+    _require_trusted_code(body.acknowledge_risk)
+    found = _wrap(lambda: svc.save_upload(settings, body.filename, body.code.encode("utf-8")))
+    path = found[0].source_path
+    try:
+        strategy = _wrap(
+            lambda: svc.create_strategy(
+                db,
+                settings,
+                name=body.name.strip(),
+                description=body.description,
+                source_path=path,
+                class_name=body.class_name,
+                parameters=body.parameters,
+            )
+        )
+    except Exception:
+        svc.resolve_source(settings, path).unlink(missing_ok=True)
+        raise
+    audit(db, "strategy.create", strategy.name, {"source": path}, client_ip(request))
+    return strategy_out(strategy)
+
+
 @router.post("/upload")
 async def upload(
     request: Request,
@@ -93,10 +140,7 @@ async def upload(
     settings: Settings = Depends(settings_dep),
     db: Session = Depends(get_db),
 ) -> list[dict[str, Any]]:
-    if not acknowledge_risk:
-        raise HTTPException(
-            400, "Confirm that you trust this code: it runs with the server's permissions."
-        )
+    _require_trusted_code(acknowledge_risk)
     content = await file.read(svc.MAX_UPLOAD_BYTES + 1)
     found = _wrap(lambda: svc.save_upload(settings, file.filename or "strategy.py", content))
     audit(

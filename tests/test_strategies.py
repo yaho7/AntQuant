@@ -109,3 +109,25 @@ def test_source_view(authed: TestClient) -> None:
     s = _create(authed)
     body = authed.get(f"/api/strategies/{s['id']}/source").json()
     assert "class BuyAndHold" in body["code"]
+
+
+def test_scan_and_import_strategy(authed: TestClient) -> None:
+    code = GOOD.decode().replace("parameters =", "parameters: dict =")
+    code += "\nraise RuntimeError('scanning must never run this')\n"
+    source = {"filename": "bot.py", "code": code}
+    scan = authed.post("/api/strategies/scan", json=source).json()
+    assert scan["classes"][0]["parameters"] == {"symbol": "QQQ", "n": 3}
+    assert not any(
+        item["class_name"] == "MyBot" for item in authed.get("/api/strategies/discover").json()
+    )
+
+    broken = authed.post("/api/strategies/scan", json={"code": "class Bot(Strategy)\n"}).json()
+    assert broken["classes"] == [] and broken["line"] == 1
+
+    body = {**source, "name": "My strategy", "class_name": "MyBot", "parameters": {"n": 5}}
+    assert authed.post("/api/strategies/import", json=body).status_code == 400
+    saved = authed.post("/api/strategies/import", json={**body, "acknowledge_risk": True})
+    assert saved.status_code == 200, saved.text
+    assert saved.json()["parameters"] == {"n": 5}
+    path = f"/api/strategies/{saved.json()['id']}/source"
+    assert authed.get(path).json()["code"] == code

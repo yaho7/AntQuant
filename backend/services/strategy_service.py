@@ -15,6 +15,7 @@ from backend.adapters.lumibot_adapter import (
     DiscoveredStrategy,
     discover_strategies,
     parse_strategy_file,
+    parse_strategy_source,
 )
 from backend.core.config import Settings
 from backend.models import Strategy, StrategyVersion
@@ -28,6 +29,13 @@ class StrategyError(Exception):
         super().__init__(message)
         self.message = message
         self.status_code = status_code
+
+
+class StrategySyntaxError(StrategyError):
+    def __init__(self, exc: SyntaxError) -> None:
+        super().__init__("Python syntax error.")
+        self.line = exc.lineno
+        self.reason = exc.msg
 
 
 def strategy_roots(settings: Settings) -> dict[str, Path]:
@@ -137,8 +145,7 @@ def update_strategy(
     return strategy
 
 
-def save_upload(settings: Settings, filename: str, content: bytes) -> list[DiscoveredStrategy]:
-    """Store an uploaded .py file under user/uploads/ and return its strategy classes."""
+def scan_code(filename: str, content: bytes) -> list[DiscoveredStrategy]:
     if not filename.endswith(".py"):
         raise StrategyError("Only .py files are accepted.")
     if len(content) > MAX_UPLOAD_BYTES:
@@ -147,16 +154,26 @@ def save_upload(settings: Settings, filename: str, content: bytes) -> list[Disco
         content.decode("utf-8")
     except UnicodeDecodeError as exc:
         raise StrategyError("File must be UTF-8 text.") from exc
+    try:
+        found = parse_strategy_source(content, "user", Path(filename).name)
+    except SyntaxError as exc:
+        raise StrategySyntaxError(exc) from exc
+    if not found:
+        raise StrategyError(
+            "No LumiBot Strategy subclass found. The file needs `class X(Strategy):`."
+        )
+    return found
+
+
+def save_upload(settings: Settings, filename: str, content: bytes) -> list[DiscoveredStrategy]:
+    """Store an uploaded .py file under user/uploads/ and return its strategy classes."""
+    found = scan_code(filename, content)
     stem = _SAFE_NAME.sub("_", Path(filename).stem)[:60] or "strategy"
     upload_dir = settings.strategies_dir / "uploads"
     upload_dir.mkdir(parents=True, exist_ok=True)
     target = upload_dir / f"{stem}_{uuid.uuid4().hex[:8]}.py"
     target.write_bytes(content)
     rel = target.relative_to(settings.strategies_dir).as_posix()
-    found = parse_strategy_file(target, "user", rel)
-    if not found:
-        target.unlink()
-        raise StrategyError(
-            "No LumiBot Strategy subclass found. The file needs `class X(Strategy):`."
-        )
+    for item in found:
+        item.file = rel
     return found

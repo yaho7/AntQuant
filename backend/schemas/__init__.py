@@ -54,14 +54,26 @@ def _check_params(value: dict[str, Any]) -> dict[str, Any]:
     return value
 
 
-class StrategyCreate(BaseModel):
+class StrategyRegistration(BaseModel):
     name: str = Field(min_length=1, max_length=128)
     description: str = Field(default="", max_length=4000)
-    source_path: str = Field(max_length=512)
     class_name: str = Field(max_length=128, pattern=r"^[A-Za-z_][A-Za-z0-9_]*$")
     parameters: dict[str, ParamValue] | None = None
 
     _v = field_validator("parameters")(lambda v: v if v is None else _check_params(v))
+
+
+class StrategyCreate(StrategyRegistration):
+    source_path: str = Field(max_length=512)
+
+
+class StrategyCode(BaseModel):
+    code: str = Field(max_length=512 * 1024)
+    filename: str = Field(default="strategy.py", max_length=512)
+
+
+class StrategyImport(StrategyRegistration, StrategyCode):
+    acknowledge_risk: bool = False
 
 
 class StrategyUpdate(BaseModel):
