@@ -27,6 +27,7 @@ import { getLocale, LOCALES, setLocale, t, type Locale } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { profileLabel, profilePath } from "@/lib/profiles";
 import { qs } from "@/services/api";
+import type { BrokerProfile } from "@/types/api";
 
 const NAV = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true },
@@ -105,14 +106,14 @@ function LanguageMenu({ side }: { side: "right" | "bottom" }) {
   );
 }
 
-function ProfileMenu({ profileId, mobile, trading }: {
+function ProfileMenu({ profiles, profileId, mobile, trading }: {
+  profiles: BrokerProfile[];
   profileId: string | undefined;
   mobile?: boolean;
   trading: boolean;
 }) {
-  const { data } = useProfiles();
   const navigate = useNavigate();
-  const profile = data?.profiles.find((item) => item.id === profileId);
+  const profile = profiles.find((item) => item.id === profileId);
   const current = profile ? profileLabel(profile) : t("All accounts");
   return (
     <DropdownMenu.Root>
@@ -135,7 +136,7 @@ function ProfileMenu({ profileId, mobile, trading }: {
           className="language-menu z-50 max-h-[min(28rem,var(--radix-dropdown-menu-content-available-height))] min-w-48 max-w-[min(20rem,calc(100vw-1rem))] overflow-y-auto rounded-xl border bg-card p-1 text-card-foreground shadow-md">
           <DropdownMenu.RadioGroup value={profile?.id ?? ""}
             onValueChange={(id) => navigate(id ? `${profilePath(id)}${trading ? "/trading" : ""}` : "/")}>
-            {[{ id: "", label: t("All accounts") }, ...(data?.profiles ?? []).map((item) => ({ id: item.id, label: profileLabel(item) }))].map(({ id, label }) => (
+            {[{ id: "", label: t("All accounts") }, ...profiles.map((item) => ({ id: item.id, label: profileLabel(item) }))].map(({ id, label }) => (
               <DropdownMenu.RadioItem key={id} value={id}
                 className="flex min-h-9 cursor-default items-center gap-2 rounded-lg px-2.5 text-sm outline-none data-[highlighted]:bg-accent">
                 {id ? <CircleUserRound className="size-4 shrink-0 text-muted-foreground" aria-hidden />
@@ -155,7 +156,11 @@ function ProfileMenu({ profileId, mobile, trading }: {
 export function AppLayout() {
   const { pathname } = useLocation();
   const [search] = useSearchParams();
-  const profileId = useMatch("/profiles/:profileId/*")?.params.profileId ?? search.get("profile") ?? undefined;
+  const { data } = useProfiles();
+  const profiles = data?.profiles ?? [];
+  const soleProfile = profiles.length === 1 ? profiles[0] : undefined;
+  const profileId = useMatch("/profiles/:profileId/*")?.params.profileId ?? search.get("profile") ?? soleProfile?.id;
+  const showProfileMenu = profiles.length > 1;
   const accountPath = profileId ? profilePath(profileId) : "";
   const nav = NAV.map((item) => ({
     ...item,
@@ -173,7 +178,7 @@ export function AppLayout() {
           <BrandIcon className="size-6" />
         </div>
         <nav className="flex flex-col items-center gap-1" aria-label={t("Main")}>
-          <ProfileMenu profileId={profileId} trading={pathname.endsWith("/trading")} />
+          {showProfileMenu && <ProfileMenu profiles={profiles} profileId={profileId} trading={pathname.endsWith("/trading")} />}
           {nav.map(({ to, label, icon: Icon, end }) => (
             <NavLink
               key={to}
@@ -224,7 +229,7 @@ export function AppLayout() {
           </div>
           <span className="min-w-0 flex-1 truncate text-sm font-semibold">{t("AntQuant")}</span>
           <div className="flex shrink-0 items-center">
-            <ProfileMenu profileId={profileId} mobile trading={pathname.endsWith("/trading")} />
+            {showProfileMenu && <ProfileMenu profiles={profiles} profileId={profileId} mobile trading={pathname.endsWith("/trading")} />}
             <RailButton label={privacy ? t("Show amounts") : t("Hide amounts")} onClick={togglePrivacy} pressed={privacy}>
               {privacy ? <EyeOff /> : <Eye />}
             </RailButton>

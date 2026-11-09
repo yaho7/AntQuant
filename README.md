@@ -17,7 +17,8 @@ public Python API from separate worker processes.
 | Settings | Alpaca keys (write-only, encrypted), backtest defaults, timeouts, password, versions, LumiBot compatibility check, update check, audit log |
 
 Add Alpaca or Charles Schwab accounts in Settings. Each account has its own profile,
-including its balances, positions, orders, strategy runs and Wealthfolio target. Use the
+including its balances, positions, orders, strategy runs and Wealthfolio target. With one
+account, the dashboard opens its profile directly. With multiple accounts, use the
 account switcher to open a profile or see totals by currency across all accounts. For
 Alpaca, enter the trading endpoint and the matching API keys. To allow real orders, set
 `LUMIBOT_UI_LIVE_TRADING_ENABLED=true` in the server environment (under `environment`

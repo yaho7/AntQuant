@@ -40,6 +40,7 @@ export function TradingPage({ profile }: { profile?: BrokerProfile }) {
   const tasks = useTradingTasks(profile?.id);
   const running = useTradingTasks(undefined, true);
   const { data: profiles } = useProfiles();
+  const showEmergencyStop = !profile || profiles?.profiles.length === 1;
   const live = profile?.mode === "live";
   const canLiquidate = connected && profile?.can_liquidate && account.paper === !live &&
     (!live || profiles?.live_available);
@@ -75,7 +76,7 @@ export function TradingPage({ profile }: { profile?: BrokerProfile }) {
         description={profile ? profileLabel(profile) : t("Strategy runs across all broker accounts.")}
         actions={
           <>
-            {!profile && <Button variant="outline" disabled={activeTasks.length === 0} onClick={() => setConfirmEmergency(true)}>
+            {showEmergencyStop && <Button variant="outline" disabled={activeTasks.length === 0} onClick={() => setConfirmEmergency(true)}>
               <OctagonX /> {t("Emergency stop all")} </Button>}
             {profile?.can_liquidate && (
               <Button variant="destructive" disabled={!canLiquidate} onClick={() => setConfirmLiquidate(true)}>

@@ -1,6 +1,6 @@
 import { useQueries } from "@tanstack/react-query";
 import { ArrowUpRight, Layers3, Settings2 } from "lucide-react";
-import { Link, useParams } from "react-router-dom";
+import { Link, Navigate, useParams } from "react-router-dom";
 import { AllocationBreakdown } from "@/components/AccountWidgets";
 import { EmptyState, PageHeader, QueryBoundary, StatCard } from "@/components/common";
 import { Button } from "@/components/ui/button";
@@ -140,10 +140,16 @@ function AccountsOverview({ profiles }: { profiles: BrokerProfile[] }) {
 export function ProfilesPage() {
   const profiles = useProfiles();
   return (
-    <>
-      <PageHeader title={t("All accounts")} description={t("Balances, running strategies and sync status across your broker accounts.")}
-        actions={<Button asChild variant="outline"><Link to="/settings"><Settings2 /> {t("Manage accounts")}</Link></Button>} />
-      <QueryBoundary query={profiles}>{({ profiles: items }) => <AccountsOverview profiles={items} />}</QueryBoundary>
-    </>
+    <QueryBoundary query={profiles}>
+      {({ profiles: items }) => items.length === 1 ? (
+        <Navigate to={profilePath(items[0]!.id)} replace />
+      ) : (
+        <>
+          <PageHeader title={t("All accounts")} description={t("Balances, running strategies and sync status across your broker accounts.")}
+            actions={<Button asChild variant="outline"><Link to="/settings"><Settings2 /> {t("Manage accounts")}</Link></Button>} />
+          <AccountsOverview profiles={items} />
+        </>
+      )}
+    </QueryBoundary>
   );
 }
