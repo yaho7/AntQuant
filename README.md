@@ -1,4 +1,4 @@
-# AntQuant
+<img src="./antquantbanner.svg" alt="AntQuant" width="440">
 
 A self-hosted web interface for the [LumiBot](https://github.com/Lumiwealth/lumibot) trading
 framework: manage strategies, run backtests, trade on Alpaca and watch logs from one

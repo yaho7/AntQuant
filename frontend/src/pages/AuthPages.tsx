@@ -1,8 +1,9 @@
 import { useMutation } from "@tanstack/react-query";
-import { Activity, ShieldCheck } from "lucide-react";
+import { ShieldCheck } from "lucide-react";
 import * as React from "react";
 import { useNavigate } from "react-router-dom";
 import { AlpacaKeysForm } from "@/components/AlpacaKeysForm";
+import { BrandIcon } from "@/components/BrandIcon";
 import { BrokerPicker, SchwabForm } from "@/components/BrokerConnection";
 import type { BrokerName } from "@/types/api";
 import { LanguageSelect } from "@/components/LanguageSelect";
@@ -22,7 +23,7 @@ function Shell({ children, title, subtitle }: {
       <div className="view-enter w-full max-w-md">
         <div className="mb-6 flex items-center gap-2">
           <div className="flex size-8 items-center justify-center rounded-md bg-primary text-primary-foreground">
-            <Activity className="size-4" aria-hidden />
+            <BrandIcon className="size-5" />
           </div>
           <span className="font-semibold tracking-tight">{t("AntQuant")}</span>
         </div>
