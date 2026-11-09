@@ -357,11 +357,18 @@ def connect(
 
 
 @router.delete("/{profile_id}")
-def disconnect(profile_id: str, request: Request, db: Session = Depends(get_db)) -> dict:
+def disconnect(
+    profile_id: str, request: Request, remove: bool = False, db: Session = Depends(get_db)
+) -> dict:
     db.execute(text("BEGIN IMMEDIATE"))
     profile = require_profile(db, profile_id)
     if brokers.profile_running(db, profile_id):
-        raise HTTPException(409, "Stop strategies on this account before disconnecting.")
+        raise HTTPException(
+            409,
+            "Stop strategies on this account before deleting it."
+            if remove
+            else "Stop strategies on this account before disconnecting.",
+        )
     conn = brokers.trading_connection(db, profile.id)
     if profile.provider == "alpaca":
         if profile.legacy:
@@ -384,7 +391,12 @@ def disconnect(profile_id: str, request: Request, db: Session = Depends(get_db))
                 for row in others
             ):
                 delete_secrets(db, schwab.grant_secret(conn.grant_id))
-    profile.legacy = False
-    audit(db, "profile.disconnect", profile_id, {}, client_ip(request))
+    if remove:
+        db.delete(profile)
+    else:
+        profile.legacy = False
+    audit(
+        db, "profile.delete" if remove else "profile.disconnect", profile_id, {}, client_ip(request)
+    )
     brokers.reset_broker()
     return {"status": "ok"}

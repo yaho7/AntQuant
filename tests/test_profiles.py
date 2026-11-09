@@ -61,7 +61,17 @@ def test_profiles_scope_reads_and_allow_parallel_strategy(
             started.json()["id"]
         ]
         assert authed.delete(f"/api/profiles/{profile['id']}").status_code == 409
+        assert authed.delete(f"/api/profiles/{profile['id']}?remove=true").status_code == 409
     assert authed.post("/api/trading/liquidate", json={"confirm": "LIQUIDATE"}).status_code == 400
+
+
+def test_remove_disconnected_profile(authed: TestClient, alpaca_accounts: None) -> None:
+    a, b = add_alpaca(authed, "1001"), add_alpaca(authed, "1002")
+    path = f"/api/profiles/{a['id']}"
+    assert authed.delete(path).status_code == 200
+    assert authed.delete(f"{path}?remove=true").status_code == 200
+    assert authed.get("/api/profiles").json()["profiles"] == [b]
+    assert authed.patch(path, json={"name": "Renamed"}).status_code == 404
 
 
 def test_schwab_profiles_share_grant_and_renew_in_place(
@@ -108,3 +118,11 @@ def test_schwab_profiles_share_grant_and_renew_in_place(
         assert len({c.grant_id for c in conns if c}) == 1
         assert {c.account_hash for c in conns if c} == {"acct-a", "acct-b"}
         assert {c.token["access_token"] for c in conns if c} == {"token-1"}
+    first, second = profiles
+    assert authed.delete(f"/api/profiles/{first['id']}?remove=true").status_code == 200
+    assert [p["id"] for p in authed.get("/api/profiles").json()["profiles"]] == [second["id"]]
+    with session_factory()() as db:
+        assert broker_service.trading_connection(db, first["id"]) is None
+        assert isinstance(
+            broker_service.trading_connection(db, second["id"]), schwab.SchwabConnection
+        )

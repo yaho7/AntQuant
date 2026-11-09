@@ -57,7 +57,8 @@ def _accounts(endpoint: str, password: str) -> list[dict]:
 @router.get("/statuses")
 def statuses(db: Session = Depends(get_db)) -> dict:
     ids = list(db.scalars(select(BrokerProfile.id)))
-    known = select(WealthfolioRoute.id).where(WealthfolioRoute.broker_key.in_(ids))
+    # A queued fill keeps its original destination even after its profile is removed.
+    known = select(WealthfolioRoute.id)
     unassigned = db.scalar(
         select(func.count()).where(
             WealthfolioDelivery.sent_at.is_(None), WealthfolioDelivery.destination.not_in(known)
