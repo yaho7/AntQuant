@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import importlib
 import importlib.util
 import io
 import json
 import logging
 import os
+import re
 import sys
 import traceback
 from pathlib import Path
@@ -72,6 +74,25 @@ def alpaca_config() -> dict[str, Any] | None:
     }
 
 
+# Packages that AI tools and tutorials import under a name this image does not
+# ship, mapped to the installed package with the same API. An alias applies
+# only while the original package is missing.
+MODULE_ALIASES = {"pandas_ta": "pandas_ta_classic"}
+
+
+def install_module_aliases(source: bytes) -> None:
+    """Let `import pandas_ta` resolve to pandas_ta_classic for code that uses it."""
+    for alias, real in MODULE_ALIASES.items():
+        if alias in sys.modules or not re.search(rb"\b" + alias.encode() + rb"\b", source):
+            continue
+        if importlib.util.find_spec(alias) is not None or importlib.util.find_spec(real) is None:
+            continue
+        sys.modules[alias] = importlib.import_module(real)
+        for name, submodule in list(sys.modules.items()):
+            if name.startswith(real + "."):
+                sys.modules.setdefault(alias + name[len(real) :], submodule)
+
+
 def load_strategy_class(path: str, class_name: str, snapshot: str | None = None) -> type:
     from lumibot.strategies import Strategy
 
@@ -81,11 +102,13 @@ def load_strategy_class(path: str, class_name: str, snapshot: str | None = None)
         raise ImportError(f"Cannot load strategy file {file_path.name}")
     module = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = module
+    code = Path(snapshot or file_path).read_bytes()
+    install_module_aliases(code)
     if snapshot is None:
         spec.loader.exec_module(module)
     else:
         # Use the pinned code in the worker while preserving the strategy's original __file__.
-        compiled = compile(Path(snapshot).read_bytes(), snapshot, "exec")
+        compiled = compile(code, snapshot, "exec")
         exec(compiled, module.__dict__)  # noqa: S102 - run trusted administrator strategy code
     cls = getattr(module, class_name, None)
     if not isinstance(cls, type) or not issubclass(cls, Strategy):
