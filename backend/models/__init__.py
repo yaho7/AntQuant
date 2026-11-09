@@ -13,6 +13,8 @@ from backend.models.entities import (
     Task,
     UserSession,
     WealthfolioDelivery,
+    WealthfolioOrderRoute,
+    WealthfolioRoute,
 )
 
 __all__ = [
@@ -28,4 +30,6 @@ __all__ = [
     "Task",
     "UserSession",
     "WealthfolioDelivery",
+    "WealthfolioOrderRoute",
+    "WealthfolioRoute",
 ]

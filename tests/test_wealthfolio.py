@@ -102,3 +102,71 @@ def test_strategy_fills_are_queued_and_delivered_once(
         ("2", "101"),
         ("3", "102"),
     ]
+
+
+def test_two_profiles_and_target_change_keep_order_routing(
+    authed: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from backend.models import BrokerProfile
+
+    first, second = "alpaca:first", "alpaca:second"
+    accounts = [
+        {"id": name, "name": name, "currency": "USD"} for name in ("original", "new", "other")
+    ]
+    delivered = []
+
+    class Remote:
+        def __init__(self, endpoint, password):
+            self.endpoint = endpoint
+
+        def accounts(self):
+            return accounts
+
+        def deliver(self, account, key, fill):
+            delivered.append((self.endpoint, account, fill["symbol"]))
+
+        def close(self):
+            pass
+
+    monkeypatch.setattr(wealthfolio, "WebClient", Remote)
+    with session_factory()() as db:
+        for profile_id in (first, second):
+            db.add(BrokerProfile(id=profile_id, provider="alpaca", name=profile_id))
+            wealthfolio.write_json_secret(
+                db,
+                broker_service.alpaca_profile_secret(profile_id),
+                {
+                    "key": profile_id,
+                    "secret": "mock",
+                    "endpoint": "https://paper-api.alpaca.markets",
+                },
+            )
+        db.commit()
+
+    def bind(profile_id, name, endpoint=ENDPOINT):
+        response = authed.put(
+            "/api/settings/wealthfolio/connection",
+            params={"profile_id": profile_id},
+            json={"endpoint": endpoint, "account_id": name},
+        )
+        assert response.status_code == 200, response.text
+
+    bind(first, "original")
+    bind(second, "other", "https://second.example.test")
+    wealthfolio.enqueue(first, "fill-1", {"symbol": "A"}, order_id="shared")
+    bind(first, "new")
+    wealthfolio.enqueue(first, "fill-2", {"symbol": "B"}, order_id="shared")
+    wealthfolio.enqueue(first, "fill-3", {"symbol": "C"}, order_id="next")
+    wealthfolio.enqueue(second, "fill-1", {"symbol": "D"}, order_id="shared")
+    status = authed.get("/api/settings/wealthfolio/statuses").json()["profiles"]
+    assert status[first]["pending"] == 3
+    assert status[second]["pending"] == 1
+    wealthfolio.process_pending()
+    assert sorted(delivered) == sorted(
+        [
+            (ENDPOINT, "original", "A"),
+            (ENDPOINT, "original", "B"),
+            (ENDPOINT, "new", "C"),
+            ("https://second.example.test", "other", "D"),
+        ]
+    )

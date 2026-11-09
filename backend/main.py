@@ -30,7 +30,7 @@ from backend.core.db import init_engine, run_migrations, session_factory
 from backend.core.logging import setup_logging
 from backend.services.broker_service import alpaca_credentials, migrate_profiles
 from backend.services.task_manager import TaskManager
-from backend.services.wealthfolio import SyncWorker
+from backend.services.wealthfolio import SyncWorker, migrate_routes
 
 api_log = logging.getLogger("api")
 
@@ -54,6 +54,7 @@ def create_app(settings: Settings | None = None, start_tasks: bool = True) -> Fa
         factory = session_factory()
         with factory() as db:
             migrate_profiles(db)
+            migrate_routes(db)
         (settings.data_dir / "setup-token.txt").unlink(missing_ok=True)
         tm = TaskManager(settings, factory, alpaca_credentials)
         app.state.task_manager = tm

@@ -192,7 +192,13 @@ def make_managed_strategy(cls: type, work_dir: Path, broker_key: str | None = No
                         }
                     else:
                         continue
-                    enqueue(broker_key, stable_id(work_dir.name, order_id, str(index)), payload)
+                    enqueue(
+                        broker_key,
+                        stable_id(work_dir.name, order_id, str(index)),
+                        payload,
+                        order_id=order_id,
+                        first_event_id=stable_id(work_dir.name, order_id, "0"),
+                    )
                     synced_counts[order_id] = index + 1
 
         def on_partially_filled_order(self, position, order, price, quantity, multiplier):  # type: ignore[no-untyped-def]

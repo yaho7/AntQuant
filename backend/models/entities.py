@@ -190,3 +190,19 @@ class WealthfolioDelivery(Base):
     next_attempt: Mapped[float] = mapped_column(Float, default=0)
     sent_at: Mapped[float | None] = mapped_column(Float, default=None)
     error: Mapped[str | None] = mapped_column(Text, default=None)
+
+
+class WealthfolioRoute(Base):
+    __tablename__ = "wealthfolio_route"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    broker_key: Mapped[str] = mapped_column(String(80), index=True)
+    selected: Mapped[bool] = mapped_column(default=True)
+    paused: Mapped[bool] = mapped_column(default=False)
+
+
+class WealthfolioOrderRoute(Base):
+    __tablename__ = "wealthfolio_order_route"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    destination: Mapped[str] = mapped_column(ForeignKey("wealthfolio_route.id"))

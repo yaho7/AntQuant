@@ -7,21 +7,27 @@ import logging
 import threading
 import time
 from collections import Counter
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass, replace
 from datetime import UTC, datetime
 from typing import Any
 from urllib.parse import quote
 
 import httpx
 from httpx import Client
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.orm import Session
 
 from backend.adapters.brokers.base import BrokerError
 from backend.core.db import session_factory
 from backend.core.logging import register_secret
-from backend.models import WealthfolioDelivery
+from backend.core.secrets import delete_secrets
+from backend.models import (
+    BrokerProfile,
+    WealthfolioDelivery,
+    WealthfolioOrderRoute,
+    WealthfolioRoute,
+)
 from backend.services import broker_service, schwab_service
 from backend.services.schwab_service import read_json_secret, write_json_secret
 
@@ -53,62 +59,164 @@ class Connection:
         return stable_id(self.endpoint, self.account_id, self.broker_key)
 
 
-def connection(db: Session) -> Connection | None:
-    stored = read_json_secret(db, SECRET)
+def route_secret(destination: str) -> str:
+    return f"wealthfolio:route:{destination}"
+
+
+def current_key(db: Session) -> str | None:
+    return broker_service.connection_key(broker_service.trading_connection(db))
+
+
+def routes(db: Session, broker_key: str) -> list[WealthfolioRoute]:
+    return list(
+        db.scalars(select(WealthfolioRoute).where(WealthfolioRoute.broker_key == broker_key))
+    )
+
+
+def route_connection(db: Session, destination: str) -> Connection | None:
+    stored = read_json_secret(db, route_secret(destination))
     return Connection(**stored) if stored else None
 
 
+def connection(db: Session, broker_key: str | None = None) -> Connection | None:
+    key = broker_key if broker_key is not None else current_key(db)
+    selected = next((route for route in routes(db, key) if route.selected), None) if key else None
+    return route_connection(db, selected.id) if selected else None
+
+
+def saved_password(db: Session, broker_key: str | None, endpoint: str) -> str:
+    if broker_key is None:
+        return ""
+    for route in sorted(routes(db, broker_key), key=lambda route: not route.selected):
+        cfg = route_connection(db, route.id)
+        if cfg and cfg.endpoint == endpoint:
+            return cfg.password
+    return ""
+
+
 def save(db: Session, endpoint: str, password: str, account: dict, broker_key: str) -> None:
-    write_json_secret(
-        db,
-        SECRET,
-        {
-            "endpoint": endpoint,
-            "password": password,
-            "account_id": account["id"],
-            "account_name": account["name"],
-            "broker_key": broker_key,
-        },
-    )
+    cfg = Connection(endpoint, password, account["id"], account["name"], broker_key)
+    route = db.get(WealthfolioRoute, cfg.destination)
+    for prior in routes(db, broker_key):
+        prior.selected = False
+        old_cfg = route_connection(db, prior.id)
+        if old_cfg and old_cfg.endpoint == cfg.endpoint and old_cfg.password != password:
+            write_json_secret(
+                db, route_secret(prior.id), asdict(replace(old_cfg, password=password))
+            )
+    if route is None:
+        route = WealthfolioRoute(id=cfg.destination, broker_key=broker_key)
+        db.add(route)
+    route.selected = True
+    route.paused = False
+    write_json_secret(db, route_secret(cfg.destination), asdict(cfg))
 
 
-def status(db: Session) -> dict:
-    cfg = connection(db)
-    if cfg is None:
-        return {"configured": False}
+def migrate_routes(db: Session) -> None:
+    db.execute(text("BEGIN IMMEDIATE"))
+    stored = read_json_secret(db, SECRET)
+    if stored:
+        cfg = Connection(**stored)
+        save(
+            db,
+            cfg.endpoint,
+            cfg.password,
+            {"id": cfg.account_id, "name": cfg.account_name},
+            cfg.broker_key,
+        )
+        db.flush()
+        for order in db.scalars(
+            select(WealthfolioDelivery.payload).where(
+                WealthfolioDelivery.destination == cfg.destination
+            )
+        ):
+            if "schwab_order" in order:
+                db.execute(
+                    insert(WealthfolioOrderRoute)
+                    .values(
+                        id=stable_id(cfg.broker_key, order["schwab_order"]),
+                        destination=cfg.destination,
+                    )
+                    .on_conflict_do_nothing()
+                )
+        delete_secrets(db, SECRET)
+    db.commit()
+
+
+def pause(db: Session, broker_key: str) -> None:
+    for route in routes(db, broker_key):
+        route.selected = False
+        route.paused = True
+
+
+def status(db: Session, broker_key: str | None = None) -> dict:
+    key = broker_key if broker_key is not None else current_key(db)
+    available = routes(db, key) if key else []
+    cfg = connection(db, key) if key else None
     rows = WealthfolioDelivery
-    pending = db.scalar(
-        select(func.count()).where(rows.destination == cfg.destination, rows.sent_at.is_(None))
+    destinations = [route.id for route in available]
+    queued = rows.destination.in_(destinations) & rows.sent_at.is_(None)
+    pending = db.scalar(select(func.count()).where(queued))
+    parked = db.scalar(
+        select(func.count()).where(
+            queued, rows.destination.in_([route.id for route in available if route.paused])
+        )
     )
-    last_sent = db.scalar(select(func.max(rows.sent_at)).where(rows.destination == cfg.destination))
+    last_sent = db.scalar(select(func.max(rows.sent_at)).where(rows.destination.in_(destinations)))
     last_error = db.scalar(
         select(rows.error)
-        .where(rows.destination == cfg.destination, rows.sent_at.is_(None), rows.error.is_not(None))
+        .where(queued, rows.error.is_not(None))
         .order_by(rows.next_attempt.desc())
         .limit(1)
     )
     return {
-        "configured": True,
-        "endpoint": cfg.endpoint,
-        "account_name": cfg.account_name,
-        "active": cfg.broker_key
-        == broker_service.connection_key(broker_service.trading_connection(db)),
+        "configured": cfg is not None,
+        "endpoint": cfg.endpoint if cfg else None,
+        "account_name": cfg.account_name if cfg else None,
+        "active": cfg is not None,
         "pending": pending,
+        "parked": parked,
         "last_error": last_error,
         "last_synced_at": datetime.fromtimestamp(last_sent, UTC).isoformat() if last_sent else None,
     }
 
 
-def enqueue(broker_key: str, event_id: str, fill: dict) -> None:
+def enqueue(
+    broker_key: str,
+    event_id: str,
+    fill: dict,
+    order_id: str | None = None,
+    first_event_id: str | None = None,
+) -> None:
     with session_factory()() as db:
-        cfg = connection(db)
-        if cfg is None or cfg.broker_key != broker_key:
-            return
+        db.execute(text("BEGIN IMMEDIATE"))
+        key = stable_id(broker_key, order_id) if order_id else None
+        pinned = db.get(WealthfolioOrderRoute, key) if key else None
+        if pinned:
+            destination = pinned.destination
+        else:
+            available = routes(db, broker_key)
+            # Pre-profile Alpaca deliveries used the first fill ID but did not store the order ID.
+            route = next(
+                (
+                    item
+                    for item in available
+                    if first_event_id
+                    and db.get(WealthfolioDelivery, stable_id(item.id, first_event_id)) is not None
+                ),
+                None,
+            )
+            route = route or next((item for item in available if item.selected), None)
+            if route is None:
+                return
+            destination = route.id
+            if key:
+                db.add(WealthfolioOrderRoute(id=key, destination=destination))
         db.execute(
             insert(WealthfolioDelivery)
             .values(
-                id=stable_id(cfg.destination, event_id),
-                destination=cfg.destination,
+                id=stable_id(destination, event_id),
+                destination=destination,
                 payload=fill,
                 attempts=0,
                 next_attempt=time.time(),
@@ -240,26 +348,32 @@ def schwab_executions(cfg: Connection, order_id: str) -> list[tuple[str, dict]]:
 
 def process_pending(stop: threading.Event | None = None) -> None:
     with session_factory()() as db:
-        cfg = connection(db)
-        if cfg is None:
-            return
         queue = db.scalars(
             select(WealthfolioDelivery)
+            .join(WealthfolioRoute, WealthfolioRoute.id == WealthfolioDelivery.destination)
+            .join(BrokerProfile, BrokerProfile.id == WealthfolioRoute.broker_key)
             .where(
-                WealthfolioDelivery.destination == cfg.destination,
+                WealthfolioRoute.paused.is_(False),
                 WealthfolioDelivery.sent_at.is_(None),
                 WealthfolioDelivery.next_attempt <= time.time(),
             )
             .order_by(WealthfolioDelivery.next_attempt)
             .limit(20)
         ).all()
-        if not queue:
-            return
-        client = WebClient(cfg.endpoint, cfg.password)
+        clients: dict[str, tuple[Connection, WebClient]] = {}
         try:
             for row in queue:
                 if stop is not None and stop.is_set():
                     return
+                route = db.get(WealthfolioRoute, row.destination, populate_existing=True)
+                if route is None or route.paused:
+                    continue
+                if row.destination not in clients:
+                    cfg = route_connection(db, row.destination)
+                    if cfg is None:
+                        continue
+                    clients[row.destination] = (cfg, WebClient(cfg.endpoint, cfg.password))
+                cfg, client = clients[row.destination]
                 try:
                     if "schwab_order" in row.payload:
                         for key, fill in schwab_executions(cfg, row.payload["schwab_order"]):
@@ -275,7 +389,8 @@ def process_pending(stop: threading.Event | None = None) -> None:
                     row.error = None
                 db.commit()
         finally:
-            client.close()
+            for _, client in clients.values():
+                client.close()
 
 
 class SyncWorker:
