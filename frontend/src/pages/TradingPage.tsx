@@ -82,7 +82,17 @@ export function TradingPage() {
         }
       />
 
-      {live && (
+      {tradingMode?.authorization_expired ? (
+        <Alert tone="warning" className="mb-4">
+          <Lock />
+          <div className="grid gap-2">
+            {t("Schwab authorization expired. Reconnect in Settings.")}
+            <Button asChild variant="outline" size="sm" className="justify-self-start">
+              <Link to="/settings">{t("Renew authorization")}</Link>
+            </Button>
+          </div>
+        </Alert>
+      ) : live && (
         <Alert tone={tradingMode.live_available ? "warning" : "info"} className="mb-4">
           <Lock />
           <div><b>{t("Live account")}</b> · {t(tradingMode.live_available

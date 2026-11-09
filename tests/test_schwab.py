@@ -8,6 +8,8 @@ import httpx
 import pytest
 from fastapi.testclient import TestClient
 
+from backend.adapters.brokers.alpaca import AlpacaAdapter
+from backend.adapters.brokers.mock import MockBroker
 from backend.core.config import get_settings
 from backend.core.db import session_factory
 from backend.services import schwab_service
@@ -81,7 +83,14 @@ def mutate_connection(fn: Callable[[dict], None]) -> str:
         return raw["id"]
 
 
-def test_schwab_callback_account_and_expiry(authed: TestClient, schwab_api: list[dict]) -> None:
+def test_schwab_callback_account_and_expiry(
+    authed: TestClient, schwab_api: list[dict], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    alpaca = authed.put(
+        "/api/settings/alpaca/credentials",
+        json={"api_key": "PKTESTKEY1234", "api_secret": "secretsecretsecret12"},
+    )
+    assert alpaca.status_code == 200
     state = authorize(authed)
     bad = authed.post(
         "/api/settings/schwab/accounts", json={"redirect_url": f"{CALLBACK}?code=x&state=wrong"}
@@ -94,6 +103,10 @@ def test_schwab_callback_account_and_expiry(authed: TestClient, schwab_api: list
     for secret in ("test-secret", "access-new", "refresh-new", "account-hash", "12345678"):
         assert secret not in settings.text
     assert authed.get("/api/account/summary").json()["account"]["equity"] == 1200
+    monkeypatch.setattr(AlpacaAdapter, "get_account", lambda _: MockBroker().get_account())
+    tested = authed.post("/api/settings/alpaca/test")
+    assert tested.json()["account_id"] == "••••OUNT"
+    assert authed.get("/api/settings").json()["active_broker"] == "schwab"
     assert authed.get("/api/account/positions").json()[0]["symbol"] == "AAPL"
     assert (
         authed.post("/api/trading/liquidate", json={"confirm": "LIQUIDATE LIVE"}).status_code == 409
@@ -106,6 +119,7 @@ def test_schwab_callback_account_and_expiry(authed: TestClient, schwab_api: list
 
     mutate_connection(lambda item: item.update(authorized_at=time.time() - 604801))
     assert authed.get("/api/settings").json()["schwab"]["authorization_expired"]
+    assert authed.get("/api/trading/mode").json()["authorization_expired"]
     assert authed.get("/api/account/summary").json()["error"] == schwab_service.AUTH_REQUIRED
     connect(authed, authorize(authed, renew=True))
     assert mutate_connection(lambda _: None) == connection_id

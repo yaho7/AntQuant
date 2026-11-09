@@ -30,13 +30,17 @@ export function TradingControls({
   const [confirmLive, setConfirmLive] = React.useState(false);
   const [confirmStop, setConfirmStop] = React.useState(false);
   const live = tradingMode?.mode === "live";
-  const canStart = brokerConnected && !!tradingMode && (!live || tradingMode.live_available);
+  const canStart = brokerConnected && !!tradingMode && !tradingMode.authorization_expired && (!live || tradingMode.live_available);
   const active = !!task && ["pending", "starting", "running"].includes(task.status);
   const done = () => {
     void qc.invalidateQueries({ queryKey: ["strategies"] });
     void qc.invalidateQueries({ queryKey: ["trading"] });
     void qc.invalidateQueries({ queryKey: ["system"] });
   };
+  const startHint = !brokerConnected ? "Connect a broker in Settings first"
+    : tradingMode?.authorization_expired ? "Schwab authorization expired. Reconnect in Settings."
+    : live && !canStart ? "Live trading is disabled on this server."
+    : "Start strategy";
   const start = useMutation({
     mutationFn: (mode: "paper" | "live") =>
       api.post<Task>("/api/trading/start", { strategy_id: strategyId, mode, broker: tradingMode?.broker }),
@@ -74,9 +78,7 @@ export function TradingControls({
           onClick={() => live ? setConfirmLive(true) : start.mutate("paper")}
           loading={start.isPending}
           disabled={!canStart}
-          title={t(!brokerConnected ? "Connect a broker in Settings first" :
-            live && !canStart ? "Live trading is disabled on this server." :
-              live ? "Start live trading" : "Start paper trading")}
+          title={t(startHint)}
         >
           <Play /> {t("Start strategy")}
         </Button>
@@ -88,7 +90,7 @@ export function TradingControls({
           confirmLabel={t("Start live trading")}
           destructive
           loading={start.isPending}
-          onConfirm={() => start.mutate("live")}
+          onConfirm={() => { if (canStart && live) start.mutate("live"); }}
         />
       </>
     );

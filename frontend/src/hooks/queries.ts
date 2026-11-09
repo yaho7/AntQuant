@@ -76,7 +76,7 @@ export const useSettings = () =>
 export const useTradingMode = () =>
   useQuery({
     queryKey: ["trading", "mode"],
-    queryFn: () => api.get<{ mode: "paper" | "live"; live_available: boolean; broker: BrokerName; can_liquidate: boolean }>("/api/trading/mode"),
+    queryFn: () => api.get<{ mode: "paper" | "live"; live_available: boolean; broker: BrokerName; can_liquidate: boolean; authorization_expired: boolean }>("/api/trading/mode"),
   });
 
 export const useTradingTasks = () =>

@@ -147,7 +147,7 @@ def test_alpaca(
             body.api_key, body.api_secret, paper=paper, endpoint=body.endpoint
         )
     else:
-        adapter = broker_service.get_broker(db)
+        adapter = broker_service.get_alpaca_broker(db)
         if adapter is None:
             raise HTTPException(409, "No Alpaca keys are stored.")
     try:

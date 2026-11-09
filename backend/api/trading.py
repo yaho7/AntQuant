@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import time
 from pathlib import Path
 from typing import Any
 
@@ -18,6 +19,7 @@ from backend.core.config import Settings
 from backend.models import Strategy, Task
 from backend.schemas import LiquidateRequest, TradingStart
 from backend.services.broker_service import get_broker, selected_broker, trading_connection
+from backend.services.schwab_service import SchwabConnection
 from backend.services.task_manager import ACTIVE, TaskError, TaskManager
 
 router = APIRouter(prefix="/api/trading", tags=["trading"], dependencies=[Depends(require_session)])
@@ -51,6 +53,8 @@ def mode(
         "mode": "live" if live else "paper",
         "broker": selected_broker(db),
         "can_liquidate": selected_broker(db) == "alpaca",
+        "authorization_expired": isinstance(creds, SchwabConnection)
+        and creds.expires_at <= time.time(),
         "live_available": settings.live_trading_enabled,
         "live_note": None
         if settings.live_trading_enabled

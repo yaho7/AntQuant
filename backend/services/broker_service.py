@@ -116,13 +116,18 @@ def schwab_status(db: Session) -> dict:
 
 
 def get_broker(db: Session) -> BrokerAdapter | None:
-    """Return the configured broker, or None when no credentials are stored."""
-    global _cached
+    """Return the active broker, or None when no credentials are stored."""
     if _override is not None:
         return _override
-    creds = trading_connection(db)
-    if isinstance(creds, schwab_service.SchwabConnection):
-        return SchwabAdapter(creds.id)
+    if selected_broker(db) == "schwab":
+        conn = schwab_service.connection(db)
+        return SchwabAdapter(conn.id) if conn else None
+    return get_alpaca_broker(db)
+
+
+def get_alpaca_broker(db: Session) -> BrokerAdapter | None:
+    global _cached
+    creds = alpaca_credentials(db)
     if creds is None:
         return None
     fingerprint = hashlib.sha256(
