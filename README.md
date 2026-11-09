@@ -124,7 +124,7 @@ class MyStrategy(Strategy):
 
 The image never upgrades itself or LumiBot at runtime.
 
-If you installed LumiBot UI, edit the existing Compose file and change only the `image:`
+If your deployment uses the former image name, edit the existing Compose file and change only the `image:`
 value to `ghcr.io/yaho7/antquant:latest`. Keep using the same Compose project, service name
 and volume mapping so the new image starts with your existing database and credentials.
 
@@ -132,10 +132,9 @@ and volume mapping so the new image starts with your existing database and crede
 docker compose pull && docker compose up -d     # update to the newest stable release
 ```
 
-To roll back, pin the previous image and tag in `compose.yaml` and run `docker compose up -d`.
-The last release under the previous image name is `ghcr.io/yaho7/lumibot-ui:0.2.0`. The
-database is migrated forward automatically on start. Back up the volume before upgrading
-across minor versions so you can restore it if needed.
+To roll back, pin an earlier AntQuant image, such as `ghcr.io/yaho7/antquant:0.3.0`, in
+`compose.yaml` and run `docker compose up -d`. The database is migrated forward automatically
+on start. Back up the volume before upgrading across minor versions so you can restore it if needed.
 
 Tags: `latest` (newest stable release), `1.2.3` and `1.2` (releases), `main` (development
 build of the main branch), `sha-<commit>` (every main build).
