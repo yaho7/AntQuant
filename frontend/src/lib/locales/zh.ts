@@ -12,7 +12,7 @@ export const zh: Record<string, string> = {
   "Sign out": "退出登录",
   "Show amounts": "显示金额",
   "Hide amounts": "隐藏金额",
-  "LumiBot UI": "LumiBot UI",
+  "AntQuant": "AntQuant",
 
   // Common
   Cancel: "取消",
@@ -28,7 +28,7 @@ export const zh: Record<string, string> = {
   "Something went wrong": "出错了",
   "Unknown error": "未知错误",
   "Server not reachable": "无法连接服务器",
-  "Cannot reach the LumiBot UI server.": "无法连接 LumiBot UI 服务器。",
+  "Cannot reach the AntQuant server.": "无法连接 AntQuant 服务器。",
   "Invalid JSON": "JSON 格式错误",
   ok: "成功",
   refused: "已拒绝",
@@ -352,8 +352,8 @@ export const zh: Record<string, string> = {
   "Stop all": "全部停止",
   "Stop sent to {n} strategy process(es). Positions kept.": "已向 {n} 个策略进程发送停止信号，持仓保留。",
   "Liquidate the whole account?": "清空整个账户？",
-  "Cancels all open orders and submits market orders to close EVERY position in this Alpaca account, including positions opened outside LumiBot UI. Running strategies are not stopped and may open new positions.":
-    "撤销所有挂单，并用市价单平掉此 Alpaca 账户的全部持仓，包括在 LumiBot UI 之外开的仓位。运行中的策略不会停止，可能会再开新仓。",
+  "Cancels all open orders and submits market orders to close EVERY position in this Alpaca account, including positions opened outside AntQuant. Running strategies are not stopped and may open new positions.":
+    "撤销所有挂单，并用市价单平掉此 Alpaca 账户的全部持仓，包括在 AntQuant 之外开的仓位。运行中的策略不会停止，可能会再开新仓。",
   Liquidate: "清仓",
   "Stop strategies first if you want the account to stay flat.": "如果希望账户保持空仓，请先停止策略。",
   "Liquidation orders submitted to Alpaca": "清仓订单已提交到 Alpaca",
@@ -393,9 +393,9 @@ export const zh: Record<string, string> = {
   "Disk free": "可用磁盘",
   "Tasks recorded": "任务记录数",
   "LumiBot latest on PyPI:": "PyPI 上最新的 LumiBot：",
-  "(newer than installed; wait for a LumiBot UI release that verifies it)":
-    "（比已安装版本新；请等待验证了该版本的 LumiBot UI 发布）",
-  "LumiBot UI latest release:": "LumiBot UI 最新发布：",
+  "(newer than installed; wait for a AntQuant release that verifies it)":
+    "（比已安装版本新；请等待验证了该版本的 AntQuant 发布）",
+  "AntQuant latest release:": "AntQuant 最新发布：",
   "Nothing is installed automatically. Update by pulling a newer image tag.":
     "不会自动安装任何更新。请拉取更新的镜像标签来升级。",
   "LumiBot API compatibility": "LumiBot API 兼容性",

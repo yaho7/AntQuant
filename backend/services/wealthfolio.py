@@ -169,7 +169,7 @@ class WebClient:
                 "currency": fill.get("currency", "USD"),
                 "status": "POSTED",
                 "idempotencyKey": key,
-                "notes": "LumiBot strategy fill",
+                "notes": "AntQuant strategy fill",
             },
         )
         if response.is_success:

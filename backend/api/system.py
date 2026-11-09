@@ -219,7 +219,7 @@ def compat(refresh: bool = False) -> dict[str, Any]:
 
 @router.get("/system/updates")
 def updates(settings: Settings = Depends(settings_dep)) -> dict[str, Any]:
-    """Look up the newest LumiBot on PyPI and the newest LumiBot UI release on GitHub.
+    """Look up the newest LumiBot on PyPI and the newest AntQuant release on GitHub.
 
     Informational only: nothing is installed. Update by pulling a newer image.
     """

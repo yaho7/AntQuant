@@ -58,15 +58,15 @@ def create_app(settings: Settings | None = None, start_tasks: bool = True) -> Fa
         if start_tasks:
             tm.start()
             sync.start()
-        logging.getLogger("system").info("LumiBot UI %s started", __version__)
+        logging.getLogger("system").info("AntQuant %s started", __version__)
         yield
         if start_tasks:
             sync.stop()
             tm.shutdown()
-        logging.getLogger("system").info("LumiBot UI stopped")
+        logging.getLogger("system").info("AntQuant stopped")
 
     app = FastAPI(
-        title="LumiBot UI",
+        title="AntQuant",
         version=__version__,
         lifespan=lifespan,
         docs_url=None,

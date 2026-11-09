@@ -252,7 +252,7 @@ function SystemCard() {
         <QueryBoundary query={info}>
           {(i) => (
             <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-1.5 text-sm">
-              <dt className="text-muted-foreground">{t("LumiBot UI")}</dt><dd className="num">{i.ui_version}</dd>
+              <dt className="text-muted-foreground">{t("AntQuant")}</dt><dd className="num">{i.ui_version}</dd>
               <dt className="text-muted-foreground">{t("LumiBot")}</dt>
               <dd className="num flex items-center gap-2">{i.lumibot_version ?? t("not installed")}
                 {i.lumibot_version && i.verified_lumibot_versions.includes(i.lumibot_version)
@@ -272,8 +272,8 @@ function SystemCard() {
           <Alert tone="info">
             <div className="grid gap-1">
               <span>{t("LumiBot latest on PyPI:")} <b className="num">{updates.data.lumibot.latest ?? updates.data.lumibot.error}</b>
-                {updates.data.lumibot.latest && updates.data.lumibot.latest !== updates.data.lumibot.installed && ` ${t("(newer than installed; wait for a LumiBot UI release that verifies it)")}`}</span>
-              <span>{t("LumiBot UI latest release:")} <b className="num">{updates.data.ui.latest ?? updates.data.ui.error}</b></span>
+                {updates.data.lumibot.latest && updates.data.lumibot.latest !== updates.data.lumibot.installed && ` ${t("(newer than installed; wait for a AntQuant release that verifies it)")}`}</span>
+              <span>{t("AntQuant latest release:")} <b className="num">{updates.data.ui.latest ?? updates.data.ui.error}</b></span>
               <span className="text-xs text-muted-foreground">{t("Nothing is installed automatically. Update by pulling a newer image tag.")}</span>
             </div>
           </Alert>

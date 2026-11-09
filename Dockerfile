@@ -23,7 +23,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 FROM python:3.12-slim-bookworm AS runtime
 
 ARG VERSION=dev
-LABEL org.opencontainers.image.title="LumiBot UI" \
+LABEL org.opencontainers.image.title="AntQuant" \
       org.opencontainers.image.description="Self-hosted web UI for the LumiBot trading framework" \
       org.opencontainers.image.licenses="MIT" \
       org.opencontainers.image.version="${VERSION}"

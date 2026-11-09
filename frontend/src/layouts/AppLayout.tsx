@@ -1,6 +1,5 @@
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import {
-  Activity,
   CandlestickChart,
   Check,
   Eye,
@@ -17,6 +16,7 @@ import {
   Workflow,
 } from "lucide-react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
+import { BrandIcon } from "@/components/BrandIcon";
 import { useAuth } from "@/hooks/useAuth";
 import { usePrivacy } from "@/hooks/usePrivacy";
 import { type Theme, useTheme } from "@/hooks/useTheme";
@@ -107,9 +107,7 @@ export function AppLayout() {
   return (
     <div className="flex min-h-full">
       <aside className="sticky top-0 hidden h-screen w-[76px] shrink-0 flex-col items-center gap-1 py-4 md:flex">
-        <div className="mb-5 flex size-10 items-center justify-center rounded-xl bg-primary text-primary-foreground" title={t("LumiBot UI")}>
-          <Activity className="size-5" />
-        </div>
+        <BrandIcon className="mb-5 size-10 rounded-xl" />
         <nav className="flex flex-col items-center gap-1" aria-label={t("Main")}>
           {NAV.map(({ to, label, icon: Icon, end }) => (
             <NavLink
@@ -156,10 +154,8 @@ export function AppLayout() {
 
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-30 flex h-12 items-center gap-2 border-b bg-background/85 px-4 backdrop-blur md:hidden">
-          <div className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-            <Activity className="size-4" />
-          </div>
-          <span className="min-w-0 truncate text-sm font-semibold">{t("LumiBot UI")}</span>
+          <BrandIcon decorative className="size-7 rounded-lg" />
+          <span className="min-w-0 truncate text-sm font-semibold">{t("AntQuant")}</span>
           <div className="ml-auto flex shrink-0 items-center">
             <RailButton label={privacy ? t("Show amounts") : t("Hide amounts")} onClick={togglePrivacy} pressed={privacy}>
               {privacy ? <EyeOff /> : <Eye />}

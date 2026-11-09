@@ -1,10 +1,10 @@
-# LumiBot UI
+# AntQuant
 
 A self-hosted web interface for the [LumiBot](https://github.com/Lumiwealth/lumibot) trading
 framework: manage strategies, run backtests, trade on Alpaca and watch logs from one
 browser tab. Free, open source (MIT), one Docker container, no `.env` file needed.
 
-LumiBot UI does not fork or patch LumiBot. It installs a pinned LumiBot release and calls its
+AntQuant does not fork or patch LumiBot. It installs a pinned LumiBot release and calls its
 public Python API from separate worker processes.
 
 | Area | What works in this release |
@@ -166,9 +166,9 @@ Browser ──HTTPS──> FastAPI (auth, CSRF, REST) ──> services ──> S
 Create an approved Trader API app in the Schwab Developer Portal and register an HTTPS
 callback URL, such as `https://127.0.0.1:8182`. In **Settings → Broker connection**, select
 **Charles Schwab**, enter the app credentials and matching callback URL, then open the
-authorization link. Paste the full redirected URL into LumiBot UI and choose an account.
+authorization link. Paste the full redirected URL into AntQuant and choose an account.
 
-LumiBot UI stores credentials encrypted and refreshes short-lived access tokens. Schwab
+AntQuant stores credentials encrypted and refreshes short-lived access tokens. Schwab
 requires browser reauthorization after seven days. Settings show the deadline and warn
 within 24 hours. Renewing the same account can update credentials for a running strategy.
 Schwab supports account data and live strategy orders. Account equity history and
@@ -179,7 +179,7 @@ account-wide liquidation are available with Alpaca.
 In **Settings → Wealthfolio**, enter the base URL of your Wealthfolio web server and its
 password if required. Load the accounts, choose the destination, then enable fill sync.
 The link is tied to the broker account selected at setup. Use the address reachable
-from the LumiBot UI container, such as the Wealthfolio service name on a shared Docker network.
+from the AntQuant container, such as the Wealthfolio service name on a shared Docker network.
 
 New stock and ETF fills from strategy runs are added as BUY or SELL activities, including
 partial fills. Pending deliveries survive restarts and are retried with stable
@@ -188,7 +188,7 @@ The integration writes to the web server and starts with new strategy fills.
 
 ### Account vs. strategy results
 
-Alpaca reports one account. When several strategies share it, LumiBot UI shows equity,
+Alpaca reports one account. When several strategies share it, AntQuant shows equity,
 positions and P&L **for the account only** and does not split them per strategy. Per strategy
 it shows backtest results and the fills that strategy's own runs recorded.
 

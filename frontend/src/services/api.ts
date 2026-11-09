@@ -62,7 +62,7 @@ export async function request<T>(
       body: body === undefined ? undefined : isForm ? body : JSON.stringify(body),
     });
   } catch {
-    throw new ApiError(0, t("Cannot reach the LumiBot UI server."));
+    throw new ApiError(0, t("Cannot reach the AntQuant server."));
   }
   if (res.status === 401 && !path.startsWith("/api/auth/")) onUnauthorized?.();
   if (!res.ok) throw new ApiError(res.status, await parseError(res));

@@ -194,7 +194,7 @@ export function TradingPage() {
         open={confirmLiquidate}
         onOpenChange={setConfirmLiquidate}
         title={t("Liquidate the whole account?")}
-        description={t("Cancels all open orders and submits market orders to close EVERY position in this Alpaca account, including positions opened outside LumiBot UI. Running strategies are not stopped and may open new positions.")}
+        description={t("Cancels all open orders and submits market orders to close EVERY position in this Alpaca account, including positions opened outside AntQuant. Running strategies are not stopped and may open new positions.")}
         confirmLabel={t("Liquidate")}
         destructive
         phrase={live ? "LIQUIDATE LIVE" : "LIQUIDATE"}
