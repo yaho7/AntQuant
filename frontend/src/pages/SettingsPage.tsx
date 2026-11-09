@@ -4,6 +4,7 @@ import * as React from "react";
 import { AlpacaKeysForm } from "@/components/AlpacaKeysForm";
 import { BrokerPicker, SchwabForm } from "@/components/BrokerConnection";
 import { ConfirmDialog, PageHeader, QueryBoundary } from "@/components/common";
+import { WealthfolioCard } from "@/components/WealthfolioCard";
 import { useToast } from "@/components/toast";
 import { Button } from "@/components/ui/button";
 import { Alert, Badge, Card, CardContent, CardHeader, CardTitle, Field, Input, Select, Table, Td, Th } from "@/components/ui/primitives";
@@ -136,9 +137,9 @@ function BrokerCard({ view }: { view: SettingsView }) {
           <CardTitle>{t("Broker connection")}</CardTitle>
           <p className="mt-1 text-xs text-muted-foreground">{t("Choose the broker used for account data and strategy orders.")}</p>
         </div>
-        {active ? <Badge tone="gain"><CheckCircle2 /> {t("Active broker")}</Badge>
-          : configured ? <Badge>{t("Configured")}</Badge>
-            : <Badge><XCircle /> {t("Not configured")}</Badge>}
+        {active ? <Badge className="shrink-0 self-start" tone="gain"><CheckCircle2 /> {t("Active broker")}</Badge>
+          : configured ? <Badge className="shrink-0 self-start">{t("Configured")}</Badge>
+            : <Badge className="shrink-0 self-start"><XCircle /> {t("Not configured")}</Badge>}
       </CardHeader>
       <CardContent className="grid gap-3">
         <BrokerPicker value={broker} onChange={setBroker} />
@@ -340,6 +341,7 @@ export function SettingsPage() {
           <div className="grid gap-4 lg:grid-cols-2">
             <div className="grid content-start gap-4">
               <BrokerCard view={view} />
+              <WealthfolioCard />
               <BacktestSettingsCard view={view} />
               <PasswordCard />
             </div>

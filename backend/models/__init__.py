@@ -11,6 +11,7 @@ from backend.models.entities import (
     SystemEvent,
     Task,
     UserSession,
+    WealthfolioDelivery,
 )
 
 __all__ = [
@@ -24,4 +25,5 @@ __all__ = [
     "SystemEvent",
     "Task",
     "UserSession",
+    "WealthfolioDelivery",
 ]

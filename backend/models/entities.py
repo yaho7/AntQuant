@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import JSON, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import JSON, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from backend.core.db import Base
@@ -165,3 +165,17 @@ class SystemEvent(Base):
     level: Mapped[str] = mapped_column(String(16), default="INFO")
     source: Mapped[str] = mapped_column(String(64), default="system")
     message: Mapped[str] = mapped_column(Text)
+
+
+class WealthfolioDelivery(Base):
+    """A confirmed strategy fill awaiting delivery to its configured destination."""
+
+    __tablename__ = "wealthfolio_delivery"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    destination: Mapped[str] = mapped_column(String(64), index=True)
+    payload: Mapped[dict[str, Any]] = mapped_column(JSON)
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    next_attempt: Mapped[float] = mapped_column(Float, default=0)
+    sent_at: Mapped[float | None] = mapped_column(Float, default=None)
+    error: Mapped[str | None] = mapped_column(Text, default=None)

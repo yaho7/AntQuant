@@ -174,6 +174,18 @@ within 24 hours. Renewing the same account can update credentials for a running 
 Schwab supports account data and live strategy orders. Account equity history and
 account-wide liquidation are available with Alpaca.
 
+### Wealthfolio
+
+In **Settings → Wealthfolio**, enter the base URL of your Wealthfolio web server and its
+password if required. Load the accounts, choose the destination, then enable fill sync.
+The link is tied to the broker account selected at setup. Use the address reachable
+from the LumiBot UI container, such as the Wealthfolio service name on a shared Docker network.
+
+New stock and ETF fills from strategy runs are added as BUY or SELL activities, including
+partial fills. Pending deliveries survive restarts and are retried with stable
+idempotency keys. Reconnecting the same destination resumes its pending queue.
+The integration writes to the web server and starts with new strategy fills.
+
 ### Account vs. strategy results
 
 Alpaca reports one account. When several strategies share it, LumiBot UI shows equity,

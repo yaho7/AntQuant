@@ -90,6 +90,17 @@ def trading_connection(db: Session) -> AlpacaConnection | schwab_service.SchwabC
     return alpaca_credentials(db)
 
 
+def connection_key(
+    creds: AlpacaConnection | schwab_service.SchwabConnection | None,
+) -> str | None:
+    if isinstance(creds, schwab_service.SchwabConnection):
+        return f"schwab:{creds.id}"
+    if creds:
+        digest = hashlib.sha256(f"{creds.endpoint}\0{creds.key}".encode()).hexdigest()
+        return f"alpaca:{digest}"
+    return None
+
+
 def schwab_status(db: Session) -> dict:
     conn = schwab_service.connection(db)
     return {

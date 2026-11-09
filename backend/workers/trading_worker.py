@@ -24,7 +24,9 @@ import signal
 import sys
 import time
 from datetime import UTC, datetime
+from decimal import Decimal
 from pathlib import Path
+from threading import Lock
 from typing import Any
 
 os.environ.setdefault("LUMIBOT_DISABLE_UPDATE_CHECK", "true")
@@ -81,10 +83,12 @@ class ControlFile:
         return bool(self.read().get("paused"))
 
 
-def make_managed_strategy(cls: type, work_dir: Path) -> type:
+def make_managed_strategy(cls: type, work_dir: Path, broker_key: str | None = None) -> type:
     control = ControlFile(work_dir / "control.json")
     events_path = work_dir / "events.jsonl"
     heartbeat_path = work_dir / "heartbeat.json"
+    synced_counts: dict[str, int] = {}
+    fill_lock = Lock()
 
     class Managed(cls):  # type: ignore[misc, valid-type]
         def _ui_filter(self, orders: list[Any]) -> list[Any]:
@@ -133,7 +137,7 @@ def make_managed_strategy(cls: type, work_dir: Path) -> type:
                 log.debug("heartbeat failed", exc_info=True)
             return super().on_trading_iteration()
 
-        def on_filled_order(self, position, order, price, quantity, multiplier):  # type: ignore[no-untyped-def]
+        def _record_fill(self, order, price, quantity, multiplier):  # type: ignore[no-untyped-def]
             try:
                 with events_path.open("a") as fh:
                     fh.write(
@@ -152,6 +156,51 @@ def make_managed_strategy(cls: type, work_dir: Path) -> type:
                     )
             except Exception:  # noqa: BLE001
                 log.debug("event write failed", exc_info=True)
+            if broker_key and str(getattr(order.asset, "asset_type", "")) == "stock":
+                try:
+                    self._enqueue_fills(order)
+                except Exception:  # noqa: BLE001 - sync must never stop trading
+                    log.exception("Could not enqueue the Wealthfolio fill")
+
+        def _enqueue_fills(self, order):  # type: ignore[no-untyped-def]
+            from backend.services.wealthfolio import (
+                TRADE_SUBTYPES,
+                activity_type,
+                enqueue,
+                stable_id,
+            )
+
+            instruction = str(order.side).lower()
+            side = activity_type(instruction)
+            order_id = str(order.identifier or "")
+            if side is None or not order_id or broker_key is None:
+                return
+            with fill_lock:
+                trades = list(order.transactions)
+                for index in range(synced_counts.get(order_id, 0), len(trades)):
+                    fill = trades[index]
+                    if broker_key.startswith("schwab:"):
+                        payload = {"schwab_order": order_id}
+                    elif Decimal(str(fill.quantity)) > 0 and Decimal(str(fill.price)) > 0:
+                        payload = {
+                            "type": side,
+                            "subtype": TRADE_SUBTYPES.get(instruction),
+                            "symbol": order.asset.symbol,
+                            "time": datetime.now(UTC).isoformat(),
+                            "quantity": str(fill.quantity),
+                            "price": str(fill.price),
+                        }
+                    else:
+                        continue
+                    enqueue(broker_key, stable_id(work_dir.name, order_id, str(index)), payload)
+                    synced_counts[order_id] = index + 1
+
+        def on_partially_filled_order(self, position, order, price, quantity, multiplier):  # type: ignore[no-untyped-def]
+            self._record_fill(order, price, quantity, multiplier)
+            return super().on_partially_filled_order(position, order, price, quantity, multiplier)
+
+        def on_filled_order(self, position, order, price, quantity, multiplier):  # type: ignore[no-untyped-def]
+            self._record_fill(order, price, quantity, multiplier)
             return super().on_filled_order(position, order, price, quantity, multiplier)
 
     Managed.__name__ = cls.__name__
@@ -186,7 +235,9 @@ def run_strategy(work_dir: Path, spec: dict[str, Any], broker: Any) -> None:
     from lumibot.traders import Trader
 
     strategy_cls = make_managed_strategy(
-        load_strategy_class(spec["strategy_file"], spec["class_name"]), work_dir
+        load_strategy_class(spec["strategy_file"], spec["class_name"]),
+        work_dir,
+        spec.get("broker_key"),
     )
     strategy = strategy_cls(
         broker=broker,

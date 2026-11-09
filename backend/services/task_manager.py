@@ -33,7 +33,12 @@ from sqlalchemy.orm import Session, sessionmaker
 from backend.core.config import PROJECT_ROOT, Settings
 from backend.core.logging import redact
 from backend.models import BacktestResult, Strategy, SystemEvent, Task
-from backend.services.broker_service import AlpacaConnection, selected_broker, trading_connection
+from backend.services.broker_service import (
+    AlpacaConnection,
+    connection_key,
+    selected_broker,
+    trading_connection,
+)
 from backend.services.schwab_service import AUTH_REQUIRED, SchwabConnection
 from backend.services.settings_store import get_setting
 from backend.workers.common import (
@@ -240,7 +245,7 @@ class TaskManager:
             )
             if active is not None:
                 raise TaskError("This strategy is already running.", 409)
-            config = {"parameters": strategy.parameters}
+            config = {"parameters": strategy.parameters, "broker_key": connection_key(creds)}
             if isinstance(creds, SchwabConnection):
                 config.update(broker="schwab", broker_connection=creds.id)
             task = self._new_task(db, strategy, "trading", mode, config)

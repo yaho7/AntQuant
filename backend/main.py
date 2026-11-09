@@ -13,12 +13,23 @@ from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from backend import __version__
-from backend.api import account, auth, backtests, brokers, logs, strategies, system, trading
+from backend.api import (
+    account,
+    auth,
+    backtests,
+    brokers,
+    logs,
+    strategies,
+    system,
+    trading,
+    wealthfolio,
+)
 from backend.core.config import Settings, get_settings
 from backend.core.db import init_engine, run_migrations, session_factory
 from backend.core.logging import setup_logging
 from backend.services.broker_service import alpaca_credentials
 from backend.services.task_manager import TaskManager
+from backend.services.wealthfolio import SyncWorker
 
 api_log = logging.getLogger("api")
 
@@ -43,11 +54,14 @@ def create_app(settings: Settings | None = None, start_tasks: bool = True) -> Fa
         (settings.data_dir / "setup-token.txt").unlink(missing_ok=True)
         tm = TaskManager(settings, factory, alpaca_credentials)
         app.state.task_manager = tm
+        sync = SyncWorker()
         if start_tasks:
             tm.start()
+            sync.start()
         logging.getLogger("system").info("LumiBot UI %s started", __version__)
         yield
         if start_tasks:
+            sync.stop()
             tm.shutdown()
         logging.getLogger("system").info("LumiBot UI stopped")
 
@@ -113,6 +127,7 @@ def create_app(settings: Settings | None = None, start_tasks: bool = True) -> Fa
         logs.router,
         system.router,
         brokers.router,
+        wealthfolio.router,
     ):
         app.include_router(router)
 
