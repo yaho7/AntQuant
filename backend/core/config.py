@@ -29,7 +29,7 @@ class Settings(BaseSettings):
     # Allow order submission when connected to a live Alpaca account.
     live_trading_enabled: bool = False
 
-    github_repo: str = "yaho7/lumibot-ui"
+    github_repo: str = "yaho7/AntQuant"
     log_level: str = "INFO"
 
     @property

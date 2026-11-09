@@ -27,8 +27,8 @@ You need Docker with Compose. Create a folder with this `compose.yaml` (it is al
 
 ```yaml
 services:
-  lumibot-ui:
-    image: ghcr.io/yaho7/lumibot-ui:latest
+  antquant:
+    image: ghcr.io/yaho7/antquant:latest
     ports:
       - "127.0.0.1:8000:8000"
     volumes:
@@ -85,8 +85,8 @@ Everything lives in the `/data` volume: the SQLite database, encrypted keys
 
 ```bash
 # backup (the volume is named <folder>_lumibot-data; check with `docker volume ls`)
-docker run --rm -v lumibot-ui_lumibot-data:/data -v "$PWD":/backup alpine \
-  tar czf /backup/lumibot-ui-data.tgz -C /data .
+docker run --rm -v antquant_lumibot-data:/data -v "$PWD":/backup alpine \
+  tar czf /backup/antquant-data.tgz -C /data .
 ```
 
 Keep backups private: with the whole folder anyone can decrypt the stored Alpaca keys.
@@ -122,13 +122,18 @@ class MyStrategy(Strategy):
 
 The image never upgrades itself or LumiBot at runtime.
 
+If you installed LumiBot UI, edit the existing Compose file and change only the `image:`
+value to `ghcr.io/yaho7/antquant:latest`. Keep using the same Compose project, service name
+and volume mapping so the new image starts with your existing database and credentials.
+
 ```bash
 docker compose pull && docker compose up -d     # update to the newest stable release
 ```
 
-To roll back, pin an older tag in `compose.yaml` (for example `ghcr.io/yaho7/lumibot-ui:1.0`
-or an exact `sha-<commit>` tag) and run `docker compose up -d`. The database is migrated
-forward automatically on start; take a backup before upgrading across minor versions.
+To roll back, pin the previous image and tag in `compose.yaml` and run `docker compose up -d`.
+The last release under the previous image name is `ghcr.io/yaho7/lumibot-ui:0.2.0`. The
+database is migrated forward automatically on start. Back up the volume before upgrading
+across minor versions so you can restore it if needed.
 
 Tags: `latest` (newest stable release), `1.2.3` and `1.2` (releases), `main` (development
 build of the main branch), `sha-<commit>` (every main build).

@@ -1,6 +1,6 @@
 services:
-  lumibot-ui:
-    image: ghcr.io/yaho7/lumibot-ui:latest
+  antquant:
+    image: ghcr.io/yaho7/antquant:latest
     ports:
       - "127.0.0.1:8000:8000"
     volumes:
