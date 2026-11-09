@@ -1,6 +1,7 @@
 import { useQueries } from "@tanstack/react-query";
 import { ArrowUpRight, Layers3, Settings2 } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
+import { AllocationBreakdown } from "@/components/AccountWidgets";
 import { EmptyState, PageHeader, QueryBoundary, StatCard } from "@/components/common";
 import { Button } from "@/components/ui/button";
 import { Alert, Badge, Card, CardContent, CardHeader, CardTitle } from "@/components/ui/primitives";
@@ -37,6 +38,7 @@ function AccountsOverview({ profiles }: { profiles: BrokerProfile[] }) {
   const tasks = useTradingTasks(undefined, true);
   const sync = useWealthfolioStatuses();
   const totals = new Map<string, { equity: number; cash: number; count: number }>();
+  const breakdowns = new Map<string, { id: string; label: string; value: number }[]>();
   const activeCounts = new Map<string, number>();
   for (const task of tasks.data ?? []) {
     const id = task.config.broker_key;
@@ -46,8 +48,14 @@ function AccountsOverview({ profiles }: { profiles: BrokerProfile[] }) {
     if (!profiles[index]?.connected || profiles[index]?.authorization_expired || summary.error) return;
     const account = summary.data?.account;
     if (!account) return;
+    const profile = profiles[index]!;
     const total = totals.get(account.currency) ?? { equity: 0, cash: 0, count: 0 };
     totals.set(account.currency, { equity: total.equity + account.equity, cash: total.cash + account.cash, count: total.count + 1 });
+    if (account.equity > 0) {
+      const slices = breakdowns.get(account.currency) ?? [];
+      slices.push({ id: profile.id, label: profileLabel(profile), value: account.equity });
+      breakdowns.set(account.currency, slices);
+    }
   });
   const excluded = profiles.length - [...totals.values()].reduce((sum, group) => sum + group.count, 0);
 
@@ -72,6 +80,24 @@ function AccountsOverview({ profiles }: { profiles: BrokerProfile[] }) {
           )}
           {(sync.data?.unassigned ?? 0) > 0 && (
             <Alert tone="warning">{t("{n} older fills have an unassigned destination and are held for review.", { n: sync.data?.unassigned ?? 0 })}</Alert>
+          )}
+          {breakdowns.size > 0 && (
+            <Card>
+              <CardHeader>
+                <div>
+                  <CardTitle>{t("Equity by account")}</CardTitle>
+                  <p className="mt-1 text-xs text-muted-foreground">{t("Share of positive equity within each currency.")}</p>
+                </div>
+              </CardHeader>
+              <CardContent className="grid gap-5 lg:grid-cols-2">
+                {[...breakdowns].map(([currency, slices]) => (
+                  <div key={currency} className="grid min-w-0 gap-2">
+                    <p className="text-xs font-medium text-muted-foreground">{currency}</p>
+                    <AllocationBreakdown slices={slices} currency={currency} />
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
           )}
           <Card>
             <CardHeader><CardTitle>{t("Broker accounts")}</CardTitle></CardHeader>

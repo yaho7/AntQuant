@@ -94,38 +94,55 @@ export function OrdersTable({ orders, empty }: { orders: Order[]; empty: string 
 
 const SLICE_COLORS = ["--chart-1", "--chart-2", "--chart-3", "--chart-4", "--chart-5"];
 
-export function AllocationBar({ positions, cash }: { positions: Position[]; cash: number }) {
-  const slices = [
-    ...positions
-      .filter((p) => (p.market_value ?? 0) > 0)
-      .map((p) => ({ label: p.symbol, value: p.market_value ?? 0 })),
-    { label: t("Cash"), value: Math.max(cash, 0) },
-  ].sort((a, b) => b.value - a.value);
-  const total = slices.reduce((s, x) => s + x.value, 0);
+interface AllocationSlice {
+  id: string;
+  label: string;
+  value: number;
+  color?: string;
+}
+
+export function AllocationBreakdown({ slices, currency }: { slices: AllocationSlice[]; currency: string }) {
+  const ordered = slices.filter((slice) => slice.value > 0).sort((a, b) => b.value - a.value);
+  const total = ordered.reduce((sum, slice) => sum + slice.value, 0);
   if (total <= 0) return <EmptyState title={t("Nothing to allocate")} />;
-  const top = slices.slice(0, 6);
-  const rest = slices.slice(6).reduce((s, x) => s + x.value, 0);
-  if (rest > 0) top.push({ label: t("Other"), value: rest });
-  const color = (label: string, i: number) =>
-    label === t("Cash") ? "var(--muted-foreground)" : `var(${SLICE_COLORS[i % SLICE_COLORS.length]})`;
+  const top = ordered.slice(0, 6);
+  const rest = ordered.slice(6).reduce((sum, slice) => sum + slice.value, 0);
+  if (rest > 0) top.push({ id: "other", label: t("Other"), value: rest });
+  const color = (slice: AllocationSlice, i: number) => `var(${slice.color ?? SLICE_COLORS[i % SLICE_COLORS.length]})`;
   return (
-    <div className="grid gap-3">
-      <div className="flex h-2.5 w-full gap-0.5 overflow-hidden rounded-full" aria-hidden>
-        {top.map((s, i) => (
-          <div key={s.label} style={{ width: `${(s.value / total) * 100}%`, background: color(s.label, i) }} />
+    <div className="grid min-w-0 gap-3">
+      <div className="flex h-3 w-full gap-0.5 overflow-hidden rounded-full" aria-hidden>
+        {top.map((slice, i) => (
+          <div key={slice.id} className="min-w-0" style={{ flexGrow: slice.value, background: color(slice, i) }} />
         ))}
       </div>
       <ul className="grid gap-1.5 text-sm">
-        {top.map((s, i) => (
-          <li key={s.label} className="flex items-center gap-2">
-            <span className="size-2.5 rounded-sm" style={{ background: color(s.label, i) }} />
-            <span className="flex-1">{s.label}</span>
-            <span className="num sensitive text-muted-foreground">{money(s.value, "USD", 0)}</span>
-            <span className="num w-14 text-right font-medium">{pct(s.value / total, 1)}</span>
+        {top.map((slice, i) => (
+          <li key={slice.id} className="flex min-w-0 items-center gap-2">
+            <span className="size-2.5 shrink-0 rounded-sm" style={{ background: color(slice, i) }} aria-hidden />
+            <span className="min-w-0 flex-1 truncate" title={slice.label}>{slice.label}</span>
+            <span className="num sensitive shrink-0 text-muted-foreground">{money(slice.value, currency, 0)}</span>
+            <span className="num w-14 shrink-0 text-right font-medium">{pct(slice.value / total, 1)}</span>
           </li>
         ))}
       </ul>
-      <p className="text-xs text-muted-foreground">{t("Long positions by market value. Short positions are not shown in this chart.")} </p>
+    </div>
+  );
+}
+
+export function AllocationBar({ positions, cash, currency = "USD" }: {
+  positions: Position[];
+  cash: number;
+  currency?: string;
+}) {
+  const slices = [
+    ...positions.map((position, i) => ({ id: `${position.symbol}:${i}`, label: position.symbol, value: position.market_value ?? 0 })),
+    { id: "cash", label: t("Cash"), value: cash, color: "--muted-foreground" },
+  ];
+  return (
+    <div className="grid gap-3">
+      <AllocationBreakdown slices={slices} currency={currency} />
+      <p className="text-xs text-muted-foreground">{t("Long positions by market value. Short positions are not shown in this chart.")}</p>
     </div>
   );
 }

@@ -127,29 +127,31 @@ export function DashboardPage({ profile }: { profile: BrokerProfile }) {
               <AlertTriangle /> {t("The broker reports trading is blocked on this account.")} </Alert>
           )}
 
-          {profile.provider === "alpaca" && <>
-          <div className="-mx-4 mt-6 sm:-mx-8">
-            {history.isLoading ? (
-              <LoadingState rows={6} className="px-8" />
-            ) : history.error ? (
-              <ErrorState error={history.error} onRetry={() => history.refetch()} />
-            ) : equitySeries[0]!.data.length < 2 ? (
-              <EmptyState title={t("Not enough history yet")} description={t("The broker has no portfolio history for this period.")} />
-            ) : (
-              <TimeSeriesChart series={equitySeries} showRanges={false} minimal height={240} />
-            )}
-          </div>
-          <div className="mt-3 flex justify-center">
-            <Segmented
-              options={PERIODS.map((p) => p.v)}
-              labels={Object.fromEntries(PERIODS.map((p) => [p.v, t(p.short)]))}
-              value={period}
-              onChange={setPeriod}
-              ariaLabel={t("History period")}
-            />
-          </div>
-
-          </>}
+          {profile.provider === "alpaca" && (
+            <Card className="mt-6">
+              <CardHeader className="flex-wrap gap-y-2">
+                <CardTitle>{t("Equity history")}</CardTitle>
+                <Segmented
+                  options={PERIODS.map((item) => item.v)}
+                  labels={Object.fromEntries(PERIODS.map((item) => [item.v, t(item.short)]))}
+                  value={period}
+                  onChange={setPeriod}
+                  ariaLabel={t("History period")}
+                />
+              </CardHeader>
+              <CardContent>
+                {history.isLoading ? (
+                  <LoadingState rows={6} />
+                ) : history.error ? (
+                  <ErrorState error={history.error} onRetry={() => history.refetch()} />
+                ) : equitySeries[0]!.data.length < 2 ? (
+                  <EmptyState title={t("Not enough history yet")} description={t("The broker has no portfolio history for this period.")} />
+                ) : (
+                  <TimeSeriesChart key={period} series={equitySeries} currency={account.currency} showRanges={false} height={265} />
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           <div className="mt-8 grid grid-cols-2 gap-3 lg:grid-cols-4">
             <StatCard label={t("Cash balance")} value={money(account.cash, account.currency)} />
@@ -176,7 +178,7 @@ export function DashboardPage({ profile }: { profile: BrokerProfile }) {
         <Card>
           <CardHeader>
             <CardTitle>{t("Recent trades")}</CardTitle>
-            {connected && <Link className="text-xs text-primary" to="/trading">{t("View all")}</Link>}
+            {connected && <Link className="text-xs text-primary" to={tradingPath}>{t("View all")}</Link>}
           </CardHeader>
           <CardContent className="px-0">
             {!connected ? (
@@ -204,7 +206,7 @@ export function DashboardPage({ profile }: { profile: BrokerProfile }) {
                 ) : positions.error ? (
                   <ErrorState error={positions.error} onRetry={() => positions.refetch()} />
                 ) : (
-                  <AllocationBar positions={positions.data ?? []} cash={account.cash} />
+                  <AllocationBar positions={positions.data ?? []} cash={account.cash} currency={account.currency} />
                 )}
               </CardContent>
             </Card>

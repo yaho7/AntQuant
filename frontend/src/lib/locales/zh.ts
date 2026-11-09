@@ -664,4 +664,11 @@ export const zh: Record<string, string> = {
   "{n} fills paused at their original destination.": "{n} 笔成交暂停同步，仍绑定原目标。",
   "{n} older fills have an unassigned destination and are held for review.": "{n} 笔历史成交的目标账户未确认，已保留待核对。",
   "{n} strategies running": "{n} 个策略正在运行",
+  "Equity by account": "账户权益分布",
+  "Equity history": "权益历史",
+  "Share of positive equity within each currency.": "按币种展示正权益账户的占比。",
+  "Zoom in": "放大图表",
+  "Zoom out": "缩小图表",
+  "Reset view": "重置视图",
+  "Use the left and right arrow keys to inspect chart values.": "使用左右方向键查看各时间点的图表数值。",
 };
