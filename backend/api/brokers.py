@@ -154,6 +154,7 @@ def connect_schwab(
         authorized_at=pending["authorized_at"],
     )
     schwab.write_json_secret(db, schwab.SCHWAB_CONNECTION, asdict(conn))
+    broker_service.sync_legacy_profile(db, "schwab")
     delete_secrets(db, schwab.SCHWAB_PENDING)
     broker_service.select_broker(db, "schwab")
     audit(db, "settings.broker", "schwab", {"action": "connect"}, client_ip(request))
@@ -168,6 +169,7 @@ def disconnect_schwab(request: Request, db: Session = Depends(get_db)) -> dict:
             raise HTTPException(409, "Stop all trading strategies before changing broker accounts.")
         broker_service.select_broker(db, "alpaca")
     delete_secrets(db, schwab.SCHWAB_CONNECTION, schwab.SCHWAB_PENDING)
+    broker_service.sync_legacy_profile(db, "schwab")
     audit(db, "settings.broker", "schwab", {"action": "disconnect"}, client_ip(request))
     return broker_service.schwab_status(db)
 

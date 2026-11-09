@@ -103,6 +103,7 @@ def setup(
         broker_service.save_alpaca_credentials(
             db, body.alpaca_api_key, body.alpaca_api_secret, body.alpaca_paper
         )
+        broker_service.sync_legacy_profile(db, "alpaca")
     token = create_session(
         db, user, settings.session_hours, request.headers.get("user-agent", ""), commit=False
     )

@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Literal
 
+from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
 from backend.adapters.brokers.alpaca import AlpacaAdapter
@@ -17,6 +18,7 @@ from backend.adapters.brokers.endpoints import ALPACA_LIVE_URL, ALPACA_PAPER_URL
 from backend.adapters.brokers.schwab import SchwabAdapter
 from backend.core.logging import register_secret
 from backend.core.secrets import delete_secrets, get_secrets, mask, set_secret
+from backend.models import BrokerProfile, Task
 from backend.services import schwab_service
 from backend.services.settings_store import (
     ALPACA_ENDPOINT,
@@ -84,7 +86,27 @@ def select_broker(db: Session, broker: Literal["alpaca", "schwab"]) -> None:
     set_setting(db, "active_broker", broker, commit=False)
 
 
-def trading_connection(db: Session) -> AlpacaConnection | schwab_service.SchwabConnection | None:
+def alpaca_profile_secret(profile_id: str) -> str:
+    return f"broker:{profile_id}"
+
+
+def trading_connection(
+    db: Session, profile_id: str | None = None
+) -> AlpacaConnection | schwab_service.SchwabConnection | None:
+    if profile_id is not None:
+        profile = db.get(BrokerProfile, profile_id)
+        if profile is None:
+            return None
+        if profile.provider == "schwab":
+            return schwab_service.connection(db, profile_id.removeprefix("schwab:"))
+        if profile.legacy:
+            return alpaca_credentials(db)
+        saved = schwab_service.read_json_secret(db, alpaca_profile_secret(profile_id))
+        if not saved:
+            return None
+        register_secret(saved["key"])
+        register_secret(saved["secret"])
+        return AlpacaConnection(**saved)
     if selected_broker(db) == "schwab":
         return schwab_service.connection(db)
     return alpaca_credentials(db)
@@ -101,8 +123,61 @@ def connection_key(
     return None
 
 
-def schwab_status(db: Session) -> dict:
-    conn = schwab_service.connection(db)
+def sync_legacy_profile(db: Session, provider: str) -> None:
+    creds = alpaca_credentials(db) if provider == "alpaca" else schwab_service.connection(db)
+    key = connection_key(creds)
+    for row in db.scalars(
+        select(BrokerProfile).where(BrokerProfile.provider == provider, BrokerProfile.legacy)
+    ):
+        if row.id != key:
+            db.delete(row)
+    if key and db.get(BrokerProfile, key) is None:
+        is_schwab = isinstance(creds, schwab_service.SchwabConnection)
+        hint = mask(creds.account_number) if is_schwab else None
+        identity = profile_identity("schwab", creds.account_number) if is_schwab else None
+        db.add(
+            BrokerProfile(
+                id=key,
+                provider=provider,
+                name="",
+                identity=identity,
+                account_hint=hint,
+                legacy=True,
+            )
+        )
+
+
+def migrate_profiles(db: Session) -> None:
+    db.execute(text("BEGIN IMMEDIATE"))
+    for provider in ("alpaca", "schwab"):
+        sync_legacy_profile(db, provider)
+    db.commit()
+
+
+def profile_identity(*parts: str) -> str:
+    return hashlib.sha256("\0".join(parts).encode()).hexdigest()
+
+
+def profile_running(db: Session, profile_id: str) -> bool:
+    from backend.services.task_manager import ACTIVE
+
+    return (
+        db.scalar(
+            select(Task.id)
+            .where(
+                Task.kind == "trading",
+                Task.status.in_(ACTIVE),
+                (Task.config["broker_key"].as_string() == profile_id)
+                | Task.config["broker_key"].as_string().is_(None),
+            )
+            .limit(1)
+        )
+        is not None
+    )
+
+
+def schwab_status(db: Session, conn: schwab_service.SchwabConnection | None = None) -> dict:
+    conn = conn or schwab_service.connection(db)
     return {
         "configured": conn is not None,
         "endpoint": schwab_service.SCHWAB_URL,
@@ -115,8 +190,13 @@ def schwab_status(db: Session) -> dict:
     }
 
 
-def get_broker(db: Session) -> BrokerAdapter | None:
+def get_broker(db: Session, profile_id: str | None = None) -> BrokerAdapter | None:
     """Return the active broker, or None when no credentials are stored."""
+    if profile_id is not None:
+        creds = trading_connection(db, profile_id)
+        if isinstance(creds, schwab_service.SchwabConnection):
+            return SchwabAdapter(creds.id)
+        return _alpaca_adapter(creds) if creds else None
     if _override is not None:
         return _override
     if selected_broker(db) == "schwab":
@@ -126,10 +206,14 @@ def get_broker(db: Session) -> BrokerAdapter | None:
 
 
 def get_alpaca_broker(db: Session) -> BrokerAdapter | None:
-    global _cached
     creds = alpaca_credentials(db)
     if creds is None:
         return None
+    return _alpaca_adapter(creds)
+
+
+def _alpaca_adapter(creds: AlpacaConnection) -> BrokerAdapter:
+    global _cached
     fingerprint = hashlib.sha256(
         f"{creds.endpoint}\0{creds.key}\0{creds.secret}".encode()
     ).hexdigest()

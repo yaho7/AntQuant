@@ -59,6 +59,17 @@ class Secret(Base):
     )
 
 
+class BrokerProfile(Base):
+    __tablename__ = "broker_profile"
+
+    id: Mapped[str] = mapped_column(String(80), primary_key=True)
+    provider: Mapped[str] = mapped_column(String(16))
+    name: Mapped[str] = mapped_column(String(80))
+    identity: Mapped[str | None] = mapped_column(String(64), unique=True)
+    account_hint: Mapped[str | None] = mapped_column(String(32))
+    legacy: Mapped[bool] = mapped_column(default=False)
+
+
 class Strategy(Base):
     __tablename__ = "strategy"
 

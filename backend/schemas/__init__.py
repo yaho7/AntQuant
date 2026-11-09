@@ -81,6 +81,7 @@ class BacktestCreate(BaseModel):
     budget: float = Field(gt=0, le=1e12)
     benchmark: str | None = Field(default="SPY", max_length=16, pattern=r"^[A-Za-z0-9.\-]*$")
     parameters: dict[str, ParamValue] | None = None
+    profile_id: str | None = Field(default=None, max_length=80)
 
     _v = field_validator("parameters")(lambda v: v if v is None else _check_params(v))
 
@@ -89,11 +90,13 @@ class TradingStart(BaseModel):
     strategy_id: int
     mode: Literal["paper", "live"] = "paper"
     broker: Literal["alpaca", "schwab"] | None = None
+    profile_id: str | None = Field(default=None, max_length=80)
 
 
 class LiquidateRequest(BaseModel):
     confirm: str
     cancel_orders: bool = True
+    profile_id: str | None = Field(default=None, max_length=80)
 
 
 class SettingUpdate(BaseModel):

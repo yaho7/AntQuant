@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from backend.adapters.brokers.base import BrokerError
@@ -16,7 +16,7 @@ from backend.api.deps import client_ip, get_db, require_session, settings_dep, t
 from backend.api.serializers import task_out
 from backend.core.audit import audit
 from backend.core.config import Settings
-from backend.models import Strategy, Task
+from backend.models import BrokerProfile, Strategy, Task
 from backend.schemas import LiquidateRequest, TradingStart
 from backend.services.broker_service import get_broker, selected_broker, trading_connection
 from backend.services.schwab_service import SchwabConnection
@@ -67,11 +67,14 @@ def mode(
 def tasks(
     active_only: bool = False,
     limit: int = Query(50, ge=1, le=500),
+    profile_id: str | None = None,
     db: Session = Depends(get_db),
 ) -> list[dict[str, Any]]:
     query = select(Task).where(Task.kind == "trading").order_by(Task.created_at.desc())
     if active_only:
         query = query.where(Task.status.in_(ACTIVE))
+    if profile_id is not None:
+        query = query.where(Task.config["broker_key"].as_string() == profile_id)
     return [{**task_out(t), "heartbeat": _heartbeat(t)} for t in db.scalars(query.limit(limit))]
 
 
@@ -91,11 +94,17 @@ def start(
     if strategy is None or strategy.archived:
         raise HTTPException(404, "Strategy not found.")
     try:
-        task = tm.start_trading(db, strategy, body.mode, body.broker)
+        task = tm.start_trading(db, strategy, body.mode, body.broker, body.profile_id)
     except TaskError as exc:
         audit(db, "trading.start", strategy.name, {"error": exc.message}, ip, success=False)
         raise HTTPException(exc.status_code, exc.message) from exc
-    audit(db, "trading.start", strategy.name, {"task": task.id, "mode": body.mode}, ip)
+    audit(
+        db,
+        "trading.start",
+        strategy.name,
+        {"task": task.id, "mode": body.mode, "profile": task.config.get("broker_key")},
+        ip,
+    )
     return task_out(task)
 
 
@@ -164,23 +173,42 @@ def liquidate(
 ) -> dict[str, Any]:
     """Close ALL positions in the broker account. Requires typing the phrase."""
     ip = client_ip(request)
-    broker = get_broker(db)
+    broker = get_broker(db, body.profile_id)
+    if broker is not None and not broker.can_liquidate:
+        raise HTTPException(409, "Account-wide liquidation is unavailable for Schwab.")
+    if (
+        body.profile_id is None
+        and (db.scalar(select(func.count()).select_from(BrokerProfile)) or 0) > 1
+    ):
+        raise HTTPException(400, "Select a broker account to liquidate.")
     if broker is None:
         raise HTTPException(409, "No broker account is connected.")
-    if not broker.can_liquidate:
-        raise HTTPException(409, "Account-wide liquidation is unavailable for Schwab.")
     if not broker.paper and not settings.live_trading_enabled:
         raise HTTPException(403, "Live trading is disabled on this server.")
     phrase = LIQUIDATE_PHRASE if broker.paper else LIVE_LIQUIDATE_PHRASE
     if body.confirm != phrase:
-        audit(db, "account.liquidate", "account", {"reason": "bad phrase"}, ip, success=False)
+        audit(
+            db,
+            "account.liquidate",
+            body.profile_id or "account",
+            {"reason": "bad phrase"},
+            ip,
+            success=False,
+        )
         raise HTTPException(400, f'Type "{phrase}" to confirm.')
     try:
         results = broker.close_all_positions(cancel_orders=body.cancel_orders)
     except BrokerError as exc:
-        audit(db, "account.liquidate", "account", {"error": exc.message}, ip, success=False)
+        audit(
+            db,
+            "account.liquidate",
+            body.profile_id or "account",
+            {"error": exc.message},
+            ip,
+            success=False,
+        )
         raise HTTPException(exc.status_code, exc.message) from exc
-    audit(db, "account.liquidate", "account", {"results": results}, ip)
+    audit(db, "account.liquidate", body.profile_id or "account", {"results": results}, ip)
     return {"results": results}
 
 

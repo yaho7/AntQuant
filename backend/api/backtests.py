@@ -17,9 +17,9 @@ from backend.adapters.lumibot_adapter import DATA_SOURCES
 from backend.api.deps import client_ip, get_db, require_session, task_manager
 from backend.api.serializers import task_out
 from backend.core.audit import audit
-from backend.models import BacktestResult, Strategy, Task
+from backend.models import BacktestResult, BrokerProfile, Strategy, Task
 from backend.schemas import BacktestCreate
-from backend.services.broker_service import alpaca_credentials
+from backend.services.broker_service import AlpacaConnection, alpaca_credentials, trading_connection
 from backend.services.settings_store import get_setting
 from backend.services.task_manager import TaskError, TaskManager
 
@@ -49,7 +49,15 @@ def _task(db: Session, task_id: str) -> Task:
 
 @router.get("/options")
 def options(db: Session = Depends(get_db)) -> dict[str, Any]:
-    has_keys = alpaca_credentials(db) is not None
+    has_keys = (
+        any(
+            isinstance(trading_connection(db, pid), AlpacaConnection)
+            for pid in db.scalars(
+                select(BrokerProfile.id).where(BrokerProfile.provider == "alpaca")
+            )
+        )
+        or alpaca_credentials(db) is not None
+    )
     return {
         "data_sources": [
             {**asdict(ds), "available": has_keys or not ds.requires_alpaca_keys}
@@ -73,8 +81,12 @@ def create(
         raise HTTPException(400, "End date must be after start date.")
     if body.end > date.today():
         raise HTTPException(400, "End date cannot be in the future.")
-    if DATA_SOURCES[body.data_source].requires_alpaca_keys and alpaca_credentials(db) is None:
-        raise HTTPException(400, "This data source needs Alpaca keys. Add them in Settings.")
+    if DATA_SOURCES[body.data_source].requires_alpaca_keys:
+        creds = (
+            trading_connection(db, body.profile_id) if body.profile_id else alpaca_credentials(db)
+        )
+        if not isinstance(creds, AlpacaConnection):
+            raise HTTPException(400, "Select an Alpaca account for backtest data.")
     config = {
         "data_source": body.data_source,
         "start": body.start.isoformat(),
@@ -83,6 +95,8 @@ def create(
         "benchmark": (body.benchmark or "").upper() or None,
         "parameters": body.parameters if body.parameters is not None else strategy.parameters,
     }
+    if body.data_source == "alpaca" and body.profile_id:
+        config["profile_id"] = body.profile_id
     try:
         task = tm.create_backtest(db, strategy, config)
     except TaskError as exc:

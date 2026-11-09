@@ -40,6 +40,7 @@ class SchwabConnection:
     account_hash: str
     token: dict[str, Any]
     authorized_at: float
+    grant_id: str | None = None
 
     @property
     def paper(self) -> bool:
@@ -59,9 +60,24 @@ def write_json_secret(db: Session, name: str, value: dict[str, Any]) -> None:
     set_secret(db, name, json.dumps(value))
 
 
-def connection(db: Session) -> SchwabConnection | None:
+def profile_secret(connection_id: str) -> str:
+    return f"schwab:profile:{connection_id}"
+
+
+def grant_secret(grant_id: str) -> str:
+    return f"schwab:grant:{grant_id}"
+
+
+def connection(db: Session, connection_id: str | None = None) -> SchwabConnection | None:
+    if connection_id is not None:
+        account = read_json_secret(db, profile_secret(connection_id))
+        if account:
+            grant = read_json_secret(db, grant_secret(account["grant_id"]))
+            return SchwabConnection(id=connection_id, **account, **grant) if grant else None
     stored = read_json_secret(db, SCHWAB_CONNECTION)
-    return SchwabConnection(**stored) if stored else None
+    if stored and (connection_id is None or stored["id"] == connection_id):
+        return SchwabConnection(**stored)
+    return None
 
 
 def authorize(app_key: str, callback: str) -> tuple[str, str]:
@@ -172,8 +188,8 @@ def request_json(path: str, access_token: str, **params: Any) -> Any:
 
 
 def require_connection(db: Session, connection_id: str) -> SchwabConnection:
-    current = connection(db)
-    if current is None or current.id != connection_id:
+    current = connection(db, connection_id)
+    if current is None:
         raise BrokerError("Schwab account is no longer connected.", 409)
     if current.expires_at <= time.time():
         raise BrokerError(AUTH_REQUIRED, 401)
@@ -205,9 +221,15 @@ def access_connection(connection_id: str) -> SchwabConnection:
         token.setdefault("refresh_token", refresh_token)
         db.execute(text("BEGIN IMMEDIATE"))
         latest = require_connection(db, connection_id)
-        if latest.authorized_at != current.authorized_at:
+        if (latest.grant_id, latest.authorized_at) != (current.grant_id, current.authorized_at):
             return latest
         updated = replace(current, token=token)
-        write_json_secret(db, SCHWAB_CONNECTION, asdict(updated))
+        if updated.grant_id:
+            key = grant_secret(updated.grant_id)
+            grant = read_json_secret(db, key)
+            assert grant is not None
+            write_json_secret(db, key, {**grant, "token": token})
+        else:
+            write_json_secret(db, SCHWAB_CONNECTION, asdict(updated))
         db.commit()
         return updated

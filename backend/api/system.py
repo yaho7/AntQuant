@@ -112,6 +112,7 @@ def put_alpaca(
     broker_service.save_alpaca_credentials(
         db, body.api_key, body.api_secret, body.paper, body.endpoint
     )
+    broker_service.sync_legacy_profile(db, "alpaca")
     audit(
         db,
         "settings.alpaca_credentials",
@@ -129,6 +130,7 @@ def delete_alpaca(request: Request, db: Session = Depends(get_db)) -> dict[str, 
     if db.scalar(select(Task.id).where(Task.kind == "trading", Task.status.in_(ACTIVE)).limit(1)):
         raise HTTPException(409, "Stop all trading strategies before removing the keys.")
     broker_service.remove_alpaca_credentials(db)
+    broker_service.sync_legacy_profile(db, "alpaca")
     audit(db, "settings.alpaca_credentials", "alpaca", {"action": "delete"}, client_ip(request))
     broker_service.reset_broker()
     return _alpaca_status(db)

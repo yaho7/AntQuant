@@ -19,6 +19,7 @@ from backend.api import (
     backtests,
     brokers,
     logs,
+    profiles,
     strategies,
     system,
     trading,
@@ -27,7 +28,7 @@ from backend.api import (
 from backend.core.config import Settings, get_settings
 from backend.core.db import init_engine, run_migrations, session_factory
 from backend.core.logging import setup_logging
-from backend.services.broker_service import alpaca_credentials
+from backend.services.broker_service import alpaca_credentials, migrate_profiles
 from backend.services.task_manager import TaskManager
 from backend.services.wealthfolio import SyncWorker
 
@@ -51,6 +52,8 @@ def create_app(settings: Settings | None = None, start_tasks: bool = True) -> Fa
         run_migrations(settings.db_path)
         init_engine(settings.db_path)
         factory = session_factory()
+        with factory() as db:
+            migrate_profiles(db)
         (settings.data_dir / "setup-token.txt").unlink(missing_ok=True)
         tm = TaskManager(settings, factory, alpaca_credentials)
         app.state.task_manager = tm
@@ -127,6 +130,7 @@ def create_app(settings: Settings | None = None, start_tasks: bool = True) -> Fa
         logs.router,
         system.router,
         brokers.router,
+        profiles.router,
         wealthfolio.router,
     ):
         app.include_router(router)
