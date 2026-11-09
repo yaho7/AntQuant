@@ -222,6 +222,132 @@ export const zh: Record<string, string> = {
   "Choose a class": "选择一个类",
   "Default parameters could not be read from the file; enter them below.":
     "无法从文件读取默认参数，请在下方填写。",
+
+  // Adding strategy code: checks, fixes, trial runs and AI help
+  "Paste a LumiBot strategy, upload a .py file or start from an example.": "粘贴 LumiBot 策略、上传 .py 文件，或从示例开始。",
+  "Paste a strategy written for LumiBot or by an AI tool, or drop a .py file. AntQuant checks it, fixes what it can and tries it on the last month of data before you add it.":
+    "粘贴在 LumiBot 或 AI 里写好的策略，或拖入 .py 文件。AntQuant 会检查代码、修复能修的问题，并在添加前用最近一个月的数据试跑。",
+  "Choose .py file": "选择 .py 文件",
+  "Blank template": "空白模板",
+  "Or start from an example:": "或从示例开始：",
+  "File in a strategy folder": "策略目录里的文件",
+  "Paste your LumiBot strategy here, or drop a .py file.": "把 LumiBot 策略代码粘贴到这里，或拖入 .py 文件。",
+  "Drop the .py file to load it": "松开即可载入 .py 文件",
+  "Added from {path} as it is. Edit the file in that folder, or edit a copy here.":
+    "将按原样从 {path} 添加。请在该目录中修改文件，或在这里编辑一份副本。",
+  "Edit a copy": "编辑副本",
+  Check: "检查",
+  "Trial run": "试跑",
+  "Add and backtest": "添加并去回测",
+  "Replace the code in the editor?": "替换编辑器里的代码？",
+  "Your edits in the editor will be lost.": "编辑器里的修改会丢失。",
+  Replace: "替换",
+  "Strategy added. Pick the dates and start its first backtest.": "策略已添加。选好日期即可开始第一次回测。",
+  "Trial passed.": "试跑通过。",
+  "The trial failed. You can still add it and fix it later.": "试跑失败。你仍可先添加，之后再修改。",
+  "Tip: try it before you add it.": "建议添加前先试跑。",
+  Passed: "通过",
+  Problem: "问题",
+  Warning: "注意",
+  Tip: "提示",
+  "Line {line}": "第 {line} 行",
+  "Paste code to check it. Checks read the file without running it.": "粘贴代码后会自动检查。检查只读取文件，不会运行。",
+  "Checking…": "检查中…",
+  "Strategy class {name}": "策略类 {name}",
+  "This file has several strategy classes. Choose one.": "这个文件里有多个策略类，请选一个。",
+  "No parameters to edit.": "没有可调的参数。",
+  "Parameters from {sources}.": "参数来自 {sources}。",
+  "the parameters dict (line {line})": "parameters 字典（第 {line} 行）",
+  "initialize() (line {line})": "initialize()（第 {line} 行）",
+  "parameters.get() defaults": "parameters.get() 的默认值",
+  "the run call on line {line}": "第 {line} 行的运行调用",
+  ", ": "、",
+  "Defaults for {names} are not plain values. They still apply, but cannot be edited here.":
+    "{names} 的默认值不是简单的值。它们照样生效，但不能在这里修改。",
+  "Reads parameter {name}, but no default is set.": "读取了参数 {name}，但没有设置默认值。",
+  "Line {line} reads parameter {name}, but no default is set.": "第 {line} 行读取了参数 {name}，但没有设置默认值。",
+  "Add {name}": "补上 {name}",
+  "Nothing here stops this code from running in AntQuant.": "没有发现会让代码在 AntQuant 里跑不起来的问题。",
+  "This file imports {module} from a file next to it. AntQuant takes one file, so copy that code into this file.":
+    "这个文件从旁边的文件导入了 {module}。AntQuant 只接收一个文件，请把那部分代码复制进来。",
+  "This server has no module named {module}. A file from your computer, such as a config.py with API keys, is not needed here. A library is not installed on this server.":
+    "服务器上没有 {module} 模块。如果它是你电脑上的文件（比如存 API 密钥的 config.py），这里用不到；如果是第三方库，说明服务器没装。",
+  "{module} runs here as {alias}, which has the same functions.": "这里会用 {alias} 运行 {module}，两者函数相同。",
+  "This code starts a run as soon as the file loads. AntQuant runs the strategy itself, so it belongs under if __name__ == \"__main__\":.":
+    "这段代码在文件加载时就会自己开始运行。AntQuant 会负责运行策略，所以它应该放在 if __name__ == \"__main__\": 下面。",
+  "AntQuant backtests use Yahoo or Alpaca data, so {names} in this file is not used.":
+    "AntQuant 回测使用 Yahoo 或 Alpaca 数据，文件里的 {names} 不会用到。",
+  "This strategy asks for minute or hour bars. Yahoo only has daily bars, so pick Alpaca data when you backtest it.":
+    "这个策略需要分钟或小时 K 线。Yahoo 只有日线，回测时请选择 Alpaca 数据。",
+  "The strategy reads {name} itself. AntQuant does not set it: the broker connection comes from the account you pick.":
+    "策略自己读取了 {name}。AntQuant 不提供这个变量，券商连接来自你选择的账户。",
+  "Fix automatically": "一键修复",
+  "Fix the code": "修复代码",
+  "Only code that AntQuant does not run moves. The strategy class stays as it is.": "只移动 AntQuant 不会运行的代码，策略类保持不变。",
+  "Line {line}: move the run code under if __name__ == \"__main__\":": "第 {line} 行：把运行代码移到 if __name__ == \"__main__\": 下面",
+  "Line {line}: move the import there too, because only that code uses it": "第 {line} 行：只有运行代码用到这个导入，一起移过去",
+  "Line {line}: remove an import that nothing uses": "第 {line} 行：删掉没有用到的导入",
+  Changes: "改动",
+  "Apply changes": "应用改动",
+  "Try it on the last month": "用最近一个月试跑",
+  "Try again": "再试一次",
+  "Tick the box above first. A trial runs the code on the server.": "请先勾选上面的确认。试跑会在服务器上运行这段代码。",
+  "Running a backtest on daily Yahoo data. This usually takes a few seconds.": "正在用 Yahoo 日线数据回测，通常只要几秒钟。",
+  "The code or parameters changed after this trial.": "试跑之后代码或参数改过了。",
+  "Ran without errors from {start} to {end}. {result}": "从 {start} 到 {end} 运行无误。{result}",
+  "{n} orders placed, return {ret}.": "下单 {n} 次，收益 {ret}。",
+  "No orders in this month. That can be normal; check the logic if you expected trades.":
+    "这个月没有下单。这可能正常；如果你预期会交易，请检查逻辑。",
+  Details: "详情",
+  "Parameter {name} has no value. Add it under Parameters.": "参数 {name} 没有值。请在「参数」里补上。",
+  "This server cannot import {module}. Remove that import, or ask the AI to use pandas, numpy or pandas_ta instead.":
+    "服务器上找不到 {module}。请删掉这个导入，或让 AI 改用 pandas、numpy 或 pandas_ta。",
+  "The code looked up {key}, but it was not there.": "代码查找了 {key}，但没有找到。",
+  "{name} is used but never defined or imported.": "用到了 {name}，但它没有定义，也没有导入。",
+  "No market data came back. Check the symbol, and check for None before using what get_historical_prices returns.":
+    "没有拿到行情数据。请检查股票代码，并在使用 get_historical_prices 的结果前先判断是不是 None。",
+  "Yahoo data could not be downloaded. Check the server's internet connection, then try again.":
+    "无法下载 Yahoo 数据。请检查服务器网络后再试。",
+  "The file connects to a broker itself, and the login was refused. Remove that code: AntQuant connects the broker for you.":
+    "文件里自己去连券商，登录被拒绝了。请删掉这段代码，AntQuant 会替你连接券商。",
+  "The trial did not finish within {seconds} seconds. A minute or hour sleeptime makes daily data slow to run.":
+    "试跑没有在 {seconds} 秒内完成。用日线数据时，分钟或小时级的 sleeptime 会跑得很慢。",
+  "The strategy stopped with an error.": "策略运行出错并停止了。",
+  "Writing with AI?": "用 AI 写？",
+  "Write a strategy with AI": "用 AI 写策略",
+  "Ask AI to fix it": "让 AI 修复",
+  "Copy this prompt into ChatGPT, Claude or another AI, add your idea at the end, then paste the code it writes into the editor.":
+    "把这段提示词复制到 ChatGPT、Claude 或其他 AI，在末尾写上你的想法，再把 AI 写好的代码粘贴到编辑器里。",
+  "Copy this into the AI tool you use. Paste the code it returns back into the editor.":
+    "把这段内容复制到你用的 AI 工具里，再把它返回的代码粘贴回编辑器。",
+  Prompt: "提示词",
+  "Copy prompt": "复制提示词",
+  "The prompt asks the AI to follow these rules:": "提示词会要求 AI 遵守这些规则：",
+  "Show the full prompt": "查看完整提示词",
+  "Copied. Paste it into your AI tool.": "已复制，粘贴到你的 AI 工具里即可。",
+  "Copy failed. Select the text and copy it.": "复制失败，请选中文字后手动复制。",
+  "Write a trading strategy for AntQuant, a web app that runs LumiBot strategies. Follow these rules:":
+    "请为 AntQuant 写一个交易策略。AntQuant 是运行 LumiBot 策略的网页应用。请遵守以下规则：",
+  "Put everything in one Python file. Import Strategy with from lumibot.strategies import Strategy and define one class, such as class MyStrategy(Strategy):.":
+    "所有代码放在一个 Python 文件里。用 from lumibot.strategies import Strategy 导入 Strategy，并定义一个类，例如 class MyStrategy(Strategy):。",
+  "Put every setting a user may change in a class-level parameters dict, using only text, numbers, true/false and lists. Read them with self.parameters[\"name\"].":
+    "用户可能要改的设置都放进类里的 parameters 字典，值只用文字、数字、True/False 和列表。用 self.parameters[\"name\"] 读取。",
+  "In initialize, set self.sleeptime = \"1D\" for one decision per day. Put the trading logic in on_trading_iteration.":
+    "在 initialize 里设置 self.sleeptime = \"1D\"，表示每天决策一次。交易逻辑写在 on_trading_iteration 里。",
+  "Get prices with self.get_last_price(symbol) and self.get_historical_prices(symbol, length, \"day\"). The second can return None, so check it before using .df.":
+    "用 self.get_last_price(symbol) 和 self.get_historical_prices(symbol, length, \"day\") 取价格。后者可能返回 None，使用 .df 前先检查。",
+  "Place orders with self.create_order(symbol, quantity, \"buy\") and self.submit_order(order). Check self.get_position(symbol) and self.get_cash() first.":
+    "用 self.create_order(symbol, quantity, \"buy\") 和 self.submit_order(order) 下单。下单前先看 self.get_position(symbol) 和 self.get_cash()。",
+  "Do not create a broker, a Trader or API keys, and do not call backtest(). AntQuant connects the broker and runs backtests itself. Code that runs the file on your own computer goes under if __name__ == \"__main__\":.":
+    "不要创建券商、Trader 或 API 密钥，也不要调用 backtest()。AntQuant 会自己连接券商并运行回测。在自己电脑上运行的代码放在 if __name__ == \"__main__\": 下面。",
+  "Use only these libraries: lumibot, pandas, numpy, scipy, pandas_ta and yfinance.":
+    "只用这些库：lumibot、pandas、numpy、scipy、pandas_ta 和 yfinance。",
+  "Backtests use daily Yahoo Finance bars for US stocks and ETFs.": "回测使用 Yahoo Finance 的美股和 ETF 日线数据。",
+  "Reply with the complete file in one code block.": "请在一个代码块里给出完整文件。",
+  "My idea:": "我的想法：",
+  "The strategy below does not run in AntQuant. Fix it.": "下面的策略在 AntQuant 里运行不了，请修好它。",
+  "Problem:": "问题：",
+  "Line {line} of the code.": "出错位置：代码第 {line} 行。",
   Description: "描述",
   Parameters: "参数",
   "JSON object passed to the strategy as self.parameters.":

@@ -79,6 +79,55 @@ export interface DiscoveredStrategy {
   parameters: Params;
   parameters_parsed: boolean;
   sha256: string;
+  /** Where the defaults were read: the class dict, initialize(), .get() fallbacks or a run call. */
+  parameter_sources: { kind: "class" | "initialize" | "get" | "call"; line: number }[];
+  /** Defaults that are not plain values; they still apply but cannot be edited. */
+  unread_parameters: string[];
+  /** Keys the code reads without any default. */
+  missing_parameters: { name: string; line: number }[];
+}
+
+export interface CodeIssue {
+  code: "missing_module" | "module_alias" | "run_code" | "data_source" | "intraday" | "env_credentials";
+  severity: "error" | "warning" | "info";
+  line: number | null;
+  params: Record<string, string>;
+  fixable: boolean;
+}
+
+export interface CodeFix {
+  code: string;
+  diff: string;
+  changes: { kind: "import" | "run_code"; line: number; moved?: boolean }[];
+}
+
+export interface CodeScan {
+  classes: DiscoveredStrategy[];
+  issues: CodeIssue[];
+  fix: CodeFix | null;
+  error?: string;
+  line?: number;
+  reason?: string;
+}
+
+export interface TrialHint {
+  code: string;
+  params: Record<string, string | number>;
+  line: number | null;
+}
+
+export interface TrialResult {
+  ok: boolean;
+  start: string;
+  end: string;
+  seconds: number;
+  log: string;
+  days?: number;
+  trades?: number;
+  total_return?: number | null;
+  error?: string;
+  traceback?: string;
+  hint?: TrialHint;
 }
 
 export interface StrategyVersion {

@@ -1,209 +1,275 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { FileCode2, Plus, ScanLine, ShieldAlert, Upload } from "lucide-react";
+import { FilePlus2, FolderOpen, Pencil, Plus, Upload } from "lucide-react";
 import * as React from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { EmptyState, PageHeader, QueryBoundary, StatusBadge } from "@/components/common";
+import { AiHelpButton } from "@/components/AiHelp";
+import { ConfirmDialog, EmptyState, PageHeader, QueryBoundary, StatusBadge } from "@/components/common";
 import { ParamsEditor } from "@/components/ParamsEditor";
-import { scanStrategyCode, StrategyCodeEditor, StrategyCodeGuide, strategyTemplate } from "@/components/StrategyCode";
+import type { LineFocus } from "@/components/PythonEditor";
+import { StrategyCodeEditor, strategyTemplate } from "@/components/StrategyCode";
+import { CodeChecks, FixDialog, Step, TrialPanel, TrustCheck, useStrategyDraft } from "@/components/StrategyChecks";
 import { TradingControls } from "@/components/TradingControls";
 import { useToast } from "@/components/toast";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Alert, Badge, Card, Field, Input, Select, Table, Td, Textarea, Th } from "@/components/ui/primitives";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useStrategies, useTradingTasks } from "@/hooks/queries";
 import { dateTime } from "@/lib/format";
+import { cn } from "@/lib/utils";
 import { api, qs } from "@/services/api";
-import type { DiscoveredStrategy, Params, Strategy } from "@/types/api";
+import type { CodeFix, DiscoveredStrategy, Strategy } from "@/types/api";
 import { t } from "@/lib/i18n";
 
-type StrategyInput = "upload" | "template" | "existing";
+/** Pasted, uploaded or example code is saved as an editable copy; a folder file is added in place. */
+type Source = { kind: "code"; filename: string } | { kind: "folder"; item: DiscoveredStrategy };
+
+const MAX_FILE_BYTES = 512 * 1024;
+const discoveredKey = (item: DiscoveredStrategy) => `${item.source_path}::${item.class_name}`;
+const baseName = (path: string) => path.split("/").pop() || "strategy.py";
+const hasFiles = (event: React.DragEvent) => Array.from(event.dataTransfer.types).includes("Files");
+
+async function readPythonFile(file: File): Promise<string> {
+  if (!file.name.endsWith(".py")) throw new Error(t("Only .py files are accepted."));
+  if (file.size > MAX_FILE_BYTES) throw new Error(t("File is larger than 512 KB."));
+  try {
+    return new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(await file.arrayBuffer());
+  } catch {
+    throw new Error(t("File must be UTF-8 text."));
+  }
+}
 
 function AddStrategyDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
   const qc = useQueryClient();
   const toast = useToast();
   const navigate = useNavigate();
+  const [search] = useSearchParams();
   const fileInput = React.useRef<HTMLInputElement>(null);
-  const [input, setInput] = React.useState<StrategyInput>("upload");
-  const [code, setCode] = React.useState(strategyTemplate);
-  const [filename, setFilename] = React.useState("");
-  const [found, setFound] = React.useState<DiscoveredStrategy[]>([]);
-  const [item, setItem] = React.useState<DiscoveredStrategy | null>(null);
+  const [source, setSource] = React.useState<Source>({ kind: "code", filename: "" });
+  const [code, setCode] = React.useState("");
+  const [loaded, setLoaded] = React.useState("");
+  const [replacing, setReplacing] = React.useState<{ apply: () => void } | null>(null);
+  const [browsing, setBrowsing] = React.useState(false);
+  const [dragging, setDragging] = React.useState(false);
+  const [loadError, setLoadError] = React.useState<string | null>(null);
+  const [focus, setFocus] = React.useState<LineFocus | null>(null);
+  const [fix, setFix] = React.useState<CodeFix | null>(null);
   const [name, setName] = React.useState("");
   const [description, setDescription] = React.useState("");
-  const [params, setParams] = React.useState<Params>({});
-  const [paramsError, setParamsError] = React.useState<string | null>(null);
-  const [ack, setAck] = React.useState(false);
+  const [named, setNamed] = React.useState(false);
+  const folder = source.kind === "folder";
+  const filename = folder ? baseName(source.item.file) : source.filename || "strategy.py";
+  const draft = useStrategyDraft(code, filename);
   const discovered = useQuery({
     queryKey: ["strategies", "discover"],
     queryFn: () => api.get<DiscoveredStrategy[]>("/api/strategies/discover"),
-    enabled: open && input === "existing",
+    enabled: open,
   });
+  const examples = (discovered.data ?? []).filter((item) => item.root === "examples");
 
-  function pick(next: DiscoveredStrategy | null) {
-    setItem(next);
-    setName(next?.class_name ?? "");
-    setDescription(next?.docstring ?? "");
-    setParams(next?.parameters ?? {});
-    setParamsError(null);
-    setAck(false);
+  const className = draft.item?.class_name;
+  const docstring = draft.item?.docstring;
+  React.useEffect(() => {
+    if (named || !className) return;
+    setName(className);
+    setDescription(docstring ?? "");
+  }, [className, docstring, named]);
+
+  /** Put new code in the editor, asking first when that would drop typed edits. */
+  function load(text: string, next: Source, className?: string) {
+    const apply = () => {
+      setCode(text);
+      setLoaded(text);
+      setSource(next);
+      setLoadError(null);
+      setNamed(false);
+      if (className) draft.pick(className);
+      draft.setAck(false);
+      draft.trial.reset();
+      if (next.kind === "code") setBrowsing(false);
+    };
+    if (code.trim() && code !== loaded) setReplacing({ apply });
+    else apply();
   }
 
-  const scan = useMutation({
-    mutationFn: async (source: File | string) => {
-      const fromFile = typeof source !== "string";
-      const file = fromFile ? source.name : "strategy.py";
-      if (fromFile && !file.endsWith(".py")) throw new Error(t("Only .py files are accepted."));
-      if (fromFile && source.size > 512 * 1024) throw new Error(t("File is larger than 512 KB."));
-      let content = source;
-      if (fromFile) {
-        const bytes = await source.arrayBuffer();
-        try {
-          content = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(bytes);
-        } catch {
-          throw new Error(t("File must be UTF-8 text."));
-        }
-      }
-      if (typeof content !== "string") throw new Error(t("File must be UTF-8 text."));
-      const classes = await scanStrategyCode(content, file);
-      return { classes, content };
+  async function loadFile(file: File) {
+    try {
+      load(await readPythonFile(file), { kind: "code", filename: file.name });
+    } catch (error) {
+      setLoadError(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  const loadDiscovered = useMutation({
+    mutationFn: async ({ item, copy }: { item: DiscoveredStrategy; copy: boolean }) => {
+      const body = await api.get<{ code: string }>(`/api/strategies/discover/source${qs({ source_path: item.source_path })}`);
+      return { item, copy, text: body.code };
     },
-    onSuccess: ({ classes, content }) => {
-      setCode(content);
-      setFound(classes);
-      pick(classes.length === 1 ? classes[0]! : null);
+    onSuccess: ({ item, copy, text }) => {
+      const next: Source = copy ? { kind: "code", filename: baseName(item.file) } : { kind: "folder", item };
+      load(text, next, item.class_name);
     },
+    onError: (error) => setLoadError(error.message),
   });
 
   const create = useMutation({
     mutationFn: () => {
-      const fields = { name: name.trim(), description, class_name: item!.class_name, parameters: params };
-      return input === "existing"
-        ? api.post<Strategy>("/api/strategies", { ...fields, source_path: item!.source_path })
-        : api.post<Strategy>("/api/strategies/import", {
-          ...fields, code, filename: input === "upload" ? filename : `${item!.class_name}.py`, acknowledge_risk: ack,
-        });
+      const fields = { name: name.trim(), description, class_name: draft.picked, parameters: draft.params };
+      return source.kind === "folder"
+        ? api.post<Strategy>("/api/strategies", { ...fields, source_path: source.item.source_path })
+        : api.post<Strategy>("/api/strategies/import", { ...fields, code, filename, acknowledge_risk: draft.ack });
     },
-    onSuccess: (s) => {
+    onSuccess: (saved) => {
       void qc.invalidateQueries({ queryKey: ["strategies"] });
       onOpenChange(false);
-      navigate(`/strategies/${s.id}`);
+      toast.success(t("Strategy added. Pick the dates and start its first backtest."));
+      navigate(`/backtesting${qs({ strategy: saved.id, profile: search.get("profile") })}`);
     },
     onError: toast.error,
   });
 
-  function changeInput(next: StrategyInput) {
-    setInput(next);
-    setFilename("");
-    setCode(strategyTemplate);
-    setFound([]);
-    pick(null);
-    scan.reset();
-  }
-
-  function startScan(source: File | string) {
-    setFound([]);
-    pick(null);
-    scan.mutate(source);
-  }
-
-  const options = input === "existing" ? discovered.data ?? [] : found;
-  const selected = item ? `${item.source_path}::${item.class_name}` : "";
-  const busy = scan.isPending || create.isPending;
+  const busy = create.isPending || draft.trial.isPending || loadDiscovered.isPending;
+  const goTo = (line: number) => setFocus({ line, nonce: Date.now() });
+  const outcome = draft.trial.data && !draft.trialStale ? draft.trial.data.result : undefined;
+  const note = !draft.item ? "" : outcome?.ok ? t("Trial passed.")
+    : outcome ? t("The trial failed. You can still add it and fix it later.") : t("Tip: try it before you add it.");
 
   return (
     <Dialog open={open} onOpenChange={(next) => { if (!busy) onOpenChange(next); }}>
-      <DialogContent title={t("Add strategy")} description={t("Import a Python strategy or start with a template.")} className="max-w-2xl">
-        <Tabs value={input} onValueChange={(value) => changeInput(value as StrategyInput)}>
-          <TabsList className="h-auto min-h-9 flex-wrap">
-            <TabsTrigger value="upload" disabled={busy}><Upload className="mr-1 size-3.5" /> {t("Upload .py file")}</TabsTrigger>
-            <TabsTrigger value="template" disabled={busy}><Plus className="mr-1 size-3.5" /> {t("Use template")}</TabsTrigger>
-            <TabsTrigger value="existing" disabled={busy}><FileCode2 className="mr-1 size-3.5" /> {t("From strategy folder")}</TabsTrigger>
-          </TabsList>
-          <TabsContent value="upload" className="grid gap-3">
-            <input ref={fileInput} type="file" accept=".py,text/x-python" hidden onChange={(event) => {
-              const file = event.currentTarget.files?.[0];
-              event.currentTarget.value = "";
-              if (file) {
-                setFilename(file.name);
-                startScan(file);
-              }
-            }} />
-            <div className="flex flex-wrap items-center gap-3">
-              <Button variant="outline" loading={scan.isPending} disabled={create.isPending} onClick={() => fileInput.current?.click()}>
-                <Upload /> {t("Upload and scan")}
+      <DialogContent title={t("Add strategy")} className="max-w-5xl"
+        description={t("Paste a strategy written for LumiBot or by an AI tool, or drop a .py file. AntQuant checks it, fixes what it can and tries it on the last month of data before you add it.")}>
+        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_22rem]"
+          onDragOverCapture={(event) => {
+            if (!hasFiles(event)) return;
+            event.preventDefault();
+            if (!busy) setDragging(true);
+          }}
+          onDragLeave={(event) => {
+            if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDragging(false);
+          }}
+          onDropCapture={(event) => {
+            if (!hasFiles(event)) return;
+            event.preventDefault();
+            event.stopPropagation();
+            setDragging(false);
+            const file = event.dataTransfer.files[0];
+            if (file && !busy) void loadFile(file);
+          }}>
+          <div className="grid min-w-0 content-start gap-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <input ref={fileInput} type="file" accept=".py,text/x-python" hidden onChange={(event) => {
+                const file = event.currentTarget.files?.[0];
+                event.currentTarget.value = "";
+                if (file) void loadFile(file);
+              }} />
+              <Button size="sm" variant="outline" disabled={busy} onClick={() => fileInput.current?.click()}>
+                <Upload /> {t("Choose .py file")}
               </Button>
-              {filename && <span className="max-w-full truncate font-mono text-xs text-muted-foreground">{filename}</span>}
+              <Button size="sm" variant="outline" disabled={busy}
+                onClick={() => load(strategyTemplate, { kind: "code", filename: "strategy.py" })}>
+                <FilePlus2 /> {t("Blank template")}
+              </Button>
+              <Button size="sm" variant="outline" disabled={busy} aria-expanded={browsing} onClick={() => setBrowsing(!browsing)}>
+                <FolderOpen /> {t("From strategy folder")}
+              </Button>
+              <span className="flex-1" />
+              <AiHelpButton />
             </div>
-          </TabsContent>
-          <TabsContent value="template" className="grid gap-3">
-            <StrategyCodeEditor code={code} label={t("Python strategy code")} onChange={busy ? undefined : (value) => {
-              setCode(value);
-              if (found.length) { setFound([]); pick(null); }
-              if (scan.isError) scan.reset();
-            }} />
-            <Button variant="outline" className="justify-self-start" loading={scan.isPending}
-              disabled={create.isPending || !code.trim()} onClick={() => startScan(code)}><ScanLine /> {t("Scan code")}</Button>
-          </TabsContent>
-          <TabsContent value="existing">
-            <p className="text-xs text-muted-foreground">{t("Classes found in strategies/examples and in data/strategies. Files are parsed, not executed, while listing.")}</p>
-            {discovered.isError && <Alert tone="warning">{discovered.error.message}</Alert>}
-          </TabsContent>
-        </Tabs>
-        {scan.isError && <Alert tone="warning" role="alert">{scan.error.message}</Alert>}
-        <StrategyCodeGuide />
-
-        {(input === "existing" || options.length > 0) && (
-          <Field label={t("Strategy class")} htmlFor={input !== "existing" && options.length === 1 ? undefined : "pick"}>
-            {input !== "existing" && options.length === 1 ? (
-              <p className="rounded-lg border bg-card px-3 py-2 font-mono text-xs">{item?.class_name}</p>
-            ) : (
-              <Select id="pick" value={selected} disabled={busy} onChange={(event) => {
-                pick(options.find((d) => `${d.source_path}::${d.class_name}` === event.target.value) ?? null);
-              }}>
-                <option value="">{input === "existing" && discovered.isLoading ? t("Loading…") : t("Choose a class")}</option>
-                {options.map((d) => (
-                  <option key={`${d.source_path}::${d.class_name}`} value={`${d.source_path}::${d.class_name}`}>
-                    {d.class_name}{input === "existing" ? ` — ${d.source_path}` : ""}
-                  </option>
+            {examples.length > 0 && (
+              <div className="-mt-1 flex flex-wrap items-center gap-x-1 text-xs text-muted-foreground">
+                <span>{t("Or start from an example:")}</span>
+                {examples.map((item) => (
+                  <Button key={discoveredKey(item)} size="sm" variant="link" className="h-7 px-1.5 text-xs underline"
+                    title={item.docstring} disabled={busy} onClick={() => loadDiscovered.mutate({ item, copy: true })}>
+                    {item.class_name}
+                  </Button>
                 ))}
-              </Select>
+              </div>
             )}
-          </Field>
-        )}
-        {item && (
-          <fieldset disabled={create.isPending} className="grid min-w-0 gap-4">
-            {!item.parameters_parsed && (
-              <Alert tone="warning">{t("Default parameters could not be read from the file; enter them below.")}</Alert>
+            {browsing && (
+              <Field label={t("File in a strategy folder")} htmlFor="folder-pick"
+                hint={t("Classes found in strategies/examples and in data/strategies. Files are parsed, not executed, while listing.")}>
+                <Select id="folder-pick" disabled={busy} value={folder ? discoveredKey(source.item) : ""} onChange={(event) => {
+                  const item = (discovered.data ?? []).find((entry) => discoveredKey(entry) === event.target.value);
+                  if (item) loadDiscovered.mutate({ item, copy: false });
+                }}>
+                  <option value="">{discovered.isLoading ? t("Loading…") : t("Choose a class")}</option>
+                  {(discovered.data ?? []).map((item) => (
+                    <option key={discoveredKey(item)} value={discoveredKey(item)}>{item.class_name} — {item.source_path}</option>
+                  ))}
+                </Select>
+              </Field>
             )}
-            <Field label={t("Name")} htmlFor="sn">
-              <Input id="sn" value={name} onChange={(e) => setName(e.target.value)} maxLength={128} />
-            </Field>
-            <Field label={t("Description")} htmlFor="sd">
-              <Textarea id="sd" value={description} onChange={(e) => setDescription(e.target.value)} />
-            </Field>
-            <Field label={t("Parameters")} htmlFor="sparams">
-              <ParamsEditor key={selected} id="sparams" value={params}
-                onChange={(p, err) => { if (p) setParams(p); setParamsError(err); }} />
-            </Field>
-            {input !== "existing" && (
-              <Alert tone="warning">
-                <ShieldAlert />
-                <label className="flex items-start gap-2 text-sm">
-                  <input type="checkbox" className="mt-1" checked={ack} onChange={(e) => setAck(e.target.checked)} />
-                  {t("I wrote or reviewed this code and accept that it runs with server permissions.")}
-                </label>
-              </Alert>
+            {loadError && <Alert tone="warning" role="alert">{loadError}</Alert>}
+            {discovered.isError && browsing && <Alert tone="warning">{discovered.error.message}</Alert>}
+            <div className={cn("relative rounded-lg", dragging && "ring-2 ring-ring")}>
+              <StrategyCodeEditor code={code} label={t("Python strategy code")} focusLine={focus} minHeight="20rem"
+                className={code ? undefined : "border-dashed"}
+                placeholder={t("Paste your LumiBot strategy here, or drop a .py file.")}
+                onChange={folder || busy ? undefined : setCode} />
+              {dragging && (
+                <div className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-lg bg-background/85 text-sm font-medium">
+                  {t("Drop the .py file to load it")}
+                </div>
+              )}
+            </div>
+            {folder ? (
+              <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                <span>{t("Added from {path} as it is. Edit the file in that folder, or edit a copy here.", { path: source.item.source_path })}</span>
+                <Button size="sm" variant="ghost" disabled={busy} onClick={() => setSource({ kind: "code", filename })}>
+                  <Pencil /> {t("Edit a copy")}
+                </Button>
+              </div>
+            ) : source.filename ? (
+              <p className="truncate font-mono text-xs text-muted-foreground">{source.filename}</p>
+            ) : null}
+          </div>
+
+          <div className="grid content-start gap-5">
+            <Step n={1} title={t("Check")} busy={draft.scan.pending && !!draft.scan.result}>
+              <CodeChecks draft={draft} onLine={goTo} onFix={setFix} />
+            </Step>
+            {draft.item && (
+              <>
+                <Step n={2} title={t("Parameters")}>
+                  <ParamsEditor key={draft.revision} id="draft-params" value={draft.params} onChange={draft.setParams} />
+                </Step>
+                <Step n={3} title={t("Trial run")}>
+                  <TrustCheck draft={draft} disabled={busy} />
+                  <TrialPanel draft={draft} onLine={goTo} disabled={busy} />
+                </Step>
+                <Step n={4} title={t("Name")}>
+                  <fieldset disabled={create.isPending} className="grid min-w-0 gap-3">
+                    <Input id="sn" aria-label={t("Name")} value={name} maxLength={128}
+                      onChange={(event) => { setName(event.target.value); setNamed(true); }} />
+                    <Field label={t("Description")} htmlFor="sd">
+                      <Textarea id="sd" value={description} onChange={(event) => { setDescription(event.target.value); setNamed(true); }} />
+                    </Field>
+                  </fieldset>
+                </Step>
+              </>
             )}
-          </fieldset>
-        )}
+          </div>
+        </div>
         <DialogFooter>
+          {note && <p className="text-xs text-muted-foreground sm:mr-auto sm:self-center">{note}</p>}
           <Button variant="outline" disabled={busy} onClick={() => onOpenChange(false)}>{t("Cancel")}</Button>
-          <Button disabled={!item || !name.trim() || !!paramsError || scan.isPending || (input !== "existing" && !ack)}
-            loading={create.isPending} onClick={() => create.mutate()}>
-            <Plus /> {t("Add strategy")}
+          <Button loading={create.isPending} onClick={() => create.mutate()}
+            disabled={!draft.ready || !name.trim() || draft.trial.isPending || (!folder && !draft.ack)}>
+            <Plus /> {t("Add and backtest")}
           </Button>
         </DialogFooter>
+        <FixDialog fix={fix} onOpenChange={(next) => { if (!next) setFix(null); }} onApply={(fixed) => {
+          setCode(fixed);
+          if (folder) setSource({ kind: "code", filename });
+          setFix(null);
+        }} />
+        {replacing && (
+          <ConfirmDialog open onOpenChange={(next) => { if (!next) setReplacing(null); }}
+            title={t("Replace the code in the editor?")}
+            description={t("Your edits in the editor will be lost.")}
+            confirmLabel={t("Replace")} destructive
+            onConfirm={() => { replacing.apply(); setReplacing(null); }} />
+        )}
       </DialogContent>
     </Dialog>
   );
@@ -227,7 +293,7 @@ export function StrategiesPage() {
             list.length === 0 ? (
               <EmptyState
                 title={t("No strategies yet")}
-                description={t("Add one of the bundled examples or upload your own LumiBot strategy file.")}
+                description={t("Paste a LumiBot strategy, upload a .py file or start from an example.")}
                 action={<Button onClick={() => setAdding(true)}><Plus /> {t("Add strategy")}</Button>}
               />
             ) : (
