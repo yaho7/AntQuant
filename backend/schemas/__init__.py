@@ -76,6 +76,14 @@ class StrategyImport(StrategyRegistration, StrategyCode):
     acknowledge_risk: bool = False
 
 
+class StrategyTrial(StrategyCode):
+    class_name: str = Field(max_length=128, pattern=r"^[A-Za-z_][A-Za-z0-9_]*$")
+    parameters: dict[str, ParamValue] = Field(default_factory=dict)
+    acknowledge_risk: bool = False
+
+    _v = field_validator("parameters")(_check_params)
+
+
 class StrategyUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=128)
     description: str | None = Field(default=None, max_length=4000)

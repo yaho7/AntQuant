@@ -1,7 +1,8 @@
 """Stand-in worker for TaskManager tests. Does not import LumiBot.
 
 Behaviour comes from spec.json:
-* backtest: sleep `sleep` seconds, then write result.json (or error.json if `fail`).
+* backtest: sleep `sleep` seconds, then write result.json, or error.json if `fail`
+  (with `error` and `traceback`; `{file}` in it becomes the strategy file path).
 * trading: write heartbeat.json, loop until SIGINT/SIGTERM.
 """
 
@@ -23,7 +24,9 @@ def main() -> int:
         params = spec.get("parameters") or {}
         time.sleep(float(params.get("sleep", 0.2)))
         if params.get("fail"):
-            (work_dir / "error.json").write_text(json.dumps({"error": "boom"}))
+            trace = str(params.get("traceback", "")).replace("{file}", spec["strategy_file"])
+            error = {"error": params.get("error", "boom"), "traceback": trace}
+            (work_dir / "error.json").write_text(json.dumps(error))
             return 1
         (work_dir / "logs").mkdir(exist_ok=True)
         (work_dir / "result.json").write_text(

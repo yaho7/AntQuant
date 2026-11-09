@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, Uplo
 from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
-from backend.api.deps import client_ip, get_db, require_session, settings_dep
+from backend.api.deps import client_ip, get_db, require_session, settings_dep, task_manager
 from backend.api.serializers import strategy_out, task_out, version_out
 from backend.core.audit import audit
 from backend.core.config import Settings
@@ -19,11 +19,14 @@ from backend.schemas import (
     StrategyCreate,
     StrategyImport,
     StrategySourceUpdate,
+    StrategyTrial,
     StrategyUpdate,
 )
-from backend.services import strategy_checks
+from backend.services import strategy_checks, trial_service
 from backend.services import strategy_service as svc
+from backend.services.settings_store import get_setting
 from backend.services.strategy_service import StrategyError
+from backend.services.task_manager import TaskManager
 
 router = APIRouter(
     prefix="/api/strategies", tags=["strategies"], dependencies=[Depends(require_session)]
@@ -130,6 +133,30 @@ def _require_trusted_code(acknowledge_risk: bool) -> None:
         raise HTTPException(
             400, "Confirm that you trust this code: it runs with the server's permissions."
         )
+
+
+@router.post("/trial")
+def trial(
+    body: StrategyTrial,
+    request: Request,
+    db: Session = Depends(get_db),
+    settings: Settings = Depends(settings_dep),
+    tm: TaskManager = Depends(task_manager),
+) -> dict[str, Any]:
+    """Run unsaved code on one month of daily Yahoo data and report what happened."""
+    _require_trusted_code(body.acknowledge_risk)
+    content = body.code.encode("utf-8")
+    classes = _wrap(lambda: svc.scan_code(body.filename, content))
+    if not any(item.class_name == body.class_name for item in classes):
+        raise HTTPException(400, "Select a strategy class found in this file.")
+    budget = float((get_setting(db, "backtest_defaults") or {}).get("budget") or 100_000)
+    sha = hashlib.sha256(content).hexdigest()
+    audit(db, "strategy.trial", body.class_name, {"sha256": sha}, client_ip(request))
+    return _wrap(
+        lambda: trial_service.run_trial(
+            settings, body.code, body.class_name, body.parameters, budget=budget, python=tm.python
+        )
+    )
 
 
 @router.post("/import")

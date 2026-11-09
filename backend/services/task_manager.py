@@ -94,6 +94,19 @@ def read_progress(work_dir: Path) -> float | None:
         return None
 
 
+def worker_env(settings: Settings) -> dict[str, str]:
+    """Environment for a worker process: the server's, minus any broker credentials."""
+    env = {
+        k: v
+        for k, v in os.environ.items()
+        if not k.startswith(("ALPACA_", "LUMIBOT_UI_ALPACA_", "SCHWAB_"))
+    }
+    env["PYTHONPATH"] = str(PROJECT_ROOT)
+    env["PYTHONUNBUFFERED"] = "1"
+    env["LUMIBOT_UI_DATA_DIR"] = str(settings.data_dir.resolve())
+    return env
+
+
 def _pid_matches(pid: int | None, create_time: float | None) -> bool:
     if not pid:
         return False
@@ -352,14 +365,7 @@ class TaskManager:
             **task.config,
         }
         (work_dir / "spec.json").write_text(json.dumps(spec))
-        env = {
-            k: v
-            for k, v in os.environ.items()
-            if not k.startswith(("ALPACA_", "LUMIBOT_UI_ALPACA_", "SCHWAB_"))
-        }
-        env["PYTHONPATH"] = str(PROJECT_ROOT)
-        env["PYTHONUNBUFFERED"] = "1"
-        env["LUMIBOT_UI_DATA_DIR"] = str(self.settings.data_dir.resolve())
+        env = worker_env(self.settings)
         if task.kind == "backtest":
             profile_id = task.config.get("profile_id")
             if profile_id:
