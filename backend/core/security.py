@@ -45,7 +45,9 @@ def _hash_token(token: str) -> str:
     return hashlib.sha256(token.encode()).hexdigest()
 
 
-def create_session(db: Session, user: AdminUser, hours: int, user_agent: str = "") -> str:
+def create_session(
+    db: Session, user: AdminUser, hours: int, user_agent: str = "", *, commit: bool = True
+) -> str:
     token = secrets.token_urlsafe(32)
     db.add(
         UserSession(
@@ -56,7 +58,8 @@ def create_session(db: Session, user: AdminUser, hours: int, user_agent: str = "
             user_agent=user_agent[:255],
         )
     )
-    db.commit()
+    if commit:
+        db.commit()
     return token
 
 

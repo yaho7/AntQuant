@@ -66,9 +66,7 @@ export const zh: Record<string, string> = {
   "Step 1 of 2 · Create the administrator account.": "第 1 步，共 2 步 · 创建管理员账户。",
   "Step 2 of 2 · Paper trading only. You can do this later in Settings.":
     "第 2 步，共 2 步 · 仅限模拟交易，也可以稍后在设置中完成。",
-  "Enter the setup token printed in the server log. With Docker:":
-    "请输入服务器日志中打印的初始化令牌。Docker 部署可运行：",
-  "Setup token": "初始化令牌",
+  "Setup is already complete.": "初始化已完成。",
   Username: "用户名",
   Password: "密码",
   "Confirm password": "确认密码",

@@ -42,11 +42,10 @@ Then:
 
 ```bash
 docker compose up -d
-docker compose logs lumibot-ui | grep "setup token"
 ```
 
-Open <http://127.0.0.1:8000>, enter the setup token from the log, create the admin account,
-and (optionally) paste your Alpaca **paper** API key and secret. That is all the setup.
+Open <http://127.0.0.1:8000>, choose your language and create the administrator account.
+You can then connect your Alpaca **paper** account or skip that step.
 
 The port is bound to `127.0.0.1` on purpose. To reach it from other devices, put a reverse
 proxy in front of it (see below) instead of opening the port.
@@ -176,8 +175,8 @@ trade) the value is shown as N/A with the reason.
 ## Security model
 
 * Single admin account. Passwords hashed with Argon2. Login throttled per IP.
-* First-run setup requires a one-time token from the server log, so nobody else can claim a
-  fresh instance.
+* The first visitor to complete setup becomes the administrator. Complete setup locally
+  before making a fresh instance reachable through a reverse proxy or tunnel.
 * Server-side sessions in an HttpOnly, SameSite=Strict cookie; CSRF token on every change;
   state-changing API calls must be JSON or multipart.
 * Alpaca keys are entered in the UI, encrypted at rest (Fernet, key file `0600` in `/data`),
@@ -197,8 +196,6 @@ uv run uvicorn backend.main:app --reload --port 8000
 
 cd frontend && npm ci && npm run dev     # http://127.0.0.1:5173, proxies /api to :8000
 ```
-
-The setup token is printed in the server output and saved to `data/setup-token.txt`.
 
 ```bash
 uv run ruff check backend tests strategies

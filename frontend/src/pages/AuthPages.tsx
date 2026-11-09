@@ -1,13 +1,13 @@
 import { useMutation } from "@tanstack/react-query";
-import { Activity, KeyRound, ShieldCheck, Terminal } from "lucide-react";
+import { Activity, KeyRound, ShieldCheck } from "lucide-react";
 import * as React from "react";
 import { useNavigate } from "react-router-dom";
 import { AlpacaKeysForm } from "@/components/AlpacaKeysForm";
 import { Button } from "@/components/ui/button";
-import { Alert, Card, Field, Input } from "@/components/ui/primitives";
+import { Alert, Card, Field, Input, Select } from "@/components/ui/primitives";
 import { useAuth } from "@/hooks/useAuth";
-import { api } from "@/services/api";
-import { t } from "@/lib/i18n";
+import { api, ApiError } from "@/services/api";
+import { getLocale, LOCALES, setLocale, t, type Locale } from "@/lib/i18n";
 
 function Shell({ children, title, subtitle }: {
   children: React.ReactNode;
@@ -63,7 +63,7 @@ export function LoginPage() {
   );
 }
 
-/** First-run wizard: claim the instance with the setup token, then connect Alpaca. */
+/** Optional broker connection after creating the administrator account. */
 export function ConnectBrokerPage() {
   const navigate = useNavigate();
   const finish = () => navigate("/", { replace: true });
@@ -87,8 +87,8 @@ export function ConnectBrokerPage() {
 export function SetupPage() {
   const { refresh } = useAuth();
   const navigate = useNavigate();
+  const [locale, setSelectedLocale] = React.useState(getLocale);
   const [form, setForm] = React.useState({
-    setup_token: "",
     username: "admin",
     password: "",
     confirm: "",
@@ -97,13 +97,15 @@ export function SetupPage() {
   const create = useMutation({
     mutationFn: () =>
       api.post("/api/auth/setup", {
-        setup_token: form.setup_token.trim(),
         username: form.username.trim(),
         password: form.password,
       }),
     onSuccess: async () => {
       navigate("/setup/connect", { replace: true });
       await refresh();
+    },
+    onError: (error) => {
+      if (error instanceof ApiError && error.status === 409) void refresh();
     },
   });
 
@@ -116,19 +118,14 @@ export function SetupPage() {
           if (!mismatch) create.mutate();
         }}
       >
-        <Alert tone="info">
-          <Terminal />
-          <div className="grid gap-1">
-            <span>{t("Enter the setup token printed in the server log. With Docker:")}</span>
-            <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">
-              docker compose logs lumibot-ui | grep "setup token"
-            </code>
-          </div>
-        </Alert>
-        <Field label={t("Setup token")} htmlFor="tok">
-          <Input id="tok" autoComplete="off" value={form.setup_token} required
-            className="font-mono"
-            onChange={(e) => setForm({ ...form, setup_token: e.target.value })} />
+        <Field label={t("Language")} htmlFor="setup-language">
+          <Select id="setup-language" value={locale} onChange={(event) => {
+            const next = event.target.value as Locale;
+            setLocale(next, false);
+            setSelectedLocale(next);
+          }}>
+            {LOCALES.map(({ id, label, intl }) => <option key={id} value={id} lang={intl}>{label}</option>)}
+          </Select>
         </Field>
         <Field label={t("Username")} htmlFor="su">
           <Input id="su" autoComplete="username" value={form.username} required
@@ -144,7 +141,7 @@ export function SetupPage() {
             aria-invalid={mismatch} />
         </Field>
         {mismatch && <Alert tone="loss">{t("Passwords do not match.")}</Alert>}
-        {create.error && <Alert tone="loss">{(create.error as Error).message}</Alert>}
+        {create.error && <Alert tone="loss">{t(create.error.message)}</Alert>}
         <Button type="submit" loading={create.isPending} disabled={mismatch}>
           <ShieldCheck /> {t("Create account")} </Button>
       </form>

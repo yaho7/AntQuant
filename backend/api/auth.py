@@ -5,7 +5,7 @@ import time
 from collections import defaultdict, deque
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
 from backend.api.deps import client_ip, get_db, require_session, settings_dep
@@ -23,7 +23,7 @@ from backend.core.security import (
 )
 from backend.models import AdminUser, UserSession
 from backend.schemas import LoginRequest, PasswordChange, SetupRequest
-from backend.services import broker_service, setup_service
+from backend.services import broker_service
 from backend.services.settings_store import ALPACA_KEY, ALPACA_SECRET
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
@@ -66,12 +66,16 @@ def _set_cookie(response: Response, token: str, settings: Settings) -> None:
     )
 
 
+def _admin_exists(db: Session) -> bool:
+    return db.scalar(select(AdminUser.id).limit(1)) is not None
+
+
 @router.get("/status")
 def status(request: Request, db: Session = Depends(get_db)) -> dict[str, bool]:
     from backend.core.security import lookup_session
 
     return {
-        "setup_required": not setup_service.admin_exists(db),
+        "setup_required": not _admin_exists(db),
         "authenticated": lookup_session(db, request.cookies.get(SESSION_COOKIE)) is not None,
     }
 
@@ -86,25 +90,27 @@ def setup(
 ) -> dict[str, str]:
     ip = client_ip(request)
     _throttle(ip)
-    if setup_service.admin_exists(db):
+    # Serialize the check and creation across processes, even for different usernames.
+    db.execute(text("BEGIN IMMEDIATE"))
+    if _admin_exists(db):
         raise HTTPException(409, "Setup is already complete.")
-    if not setup_service.check_setup_token(settings, body.setup_token):
-        _record_failure(ip)
-        raise HTTPException(403, "Setup token is incorrect. Find it in the server log.")
     if err := validate_new_password(body.password):
         raise HTTPException(400, err)
     if bool(body.alpaca_api_key) != bool(body.alpaca_api_secret):
         raise HTTPException(400, "Enter both the Alpaca API key and secret, or neither.")
     user = AdminUser(username=body.username, password_hash=hash_password(body.password))
     db.add(user)
-    db.commit()
+    db.flush()
     if body.alpaca_api_key and body.alpaca_api_secret:
-        set_secret(db, ALPACA_KEY, body.alpaca_api_key.strip())
-        set_secret(db, ALPACA_SECRET, body.alpaca_api_secret.strip())
-        broker_service.reset_broker()
-    setup_service.consume_setup_token(settings)
+        set_secret(db, ALPACA_KEY, body.alpaca_api_key.strip(), commit=False)
+        set_secret(db, ALPACA_SECRET, body.alpaca_api_secret.strip(), commit=False)
+    token = create_session(
+        db, user, settings.session_hours, request.headers.get("user-agent", ""), commit=False
+    )
+    # Commit the administrator, credentials and session with the setup audit entry.
     audit(db, "setup.complete", body.username, {"alpaca": bool(body.alpaca_api_key)}, ip)
-    token = create_session(db, user, settings.session_hours, request.headers.get("user-agent", ""))
+    if body.alpaca_api_key:
+        broker_service.reset_broker()
     _set_cookie(response, token, settings)
     return {"status": "ok"}
 

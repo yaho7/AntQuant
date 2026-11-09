@@ -49,12 +49,11 @@ def client(data_dir: Path, fake_workers: None) -> Iterator[TestClient]:
     set_broker_override(None)
 
 
-def setup_admin(client: TestClient, data_dir: Path, **extra: str) -> str:
+def setup_admin(client: TestClient, **extra: str) -> str:
     """Complete first-run setup and return the CSRF token."""
-    token = (data_dir / "setup-token.txt").read_text().strip()
     r = client.post(
         "/api/auth/setup",
-        json={"setup_token": token, "username": "admin", "password": PASSWORD, **extra},
+        json={"username": "admin", "password": PASSWORD, **extra},
     )
     assert r.status_code == 200, r.text
     csrf = client.get("/api/auth/me").json()["csrf_token"]
@@ -63,8 +62,8 @@ def setup_admin(client: TestClient, data_dir: Path, **extra: str) -> str:
 
 
 @pytest.fixture
-def authed(client: TestClient, data_dir: Path) -> TestClient:
-    setup_admin(client, data_dir)
+def authed(client: TestClient) -> TestClient:
+    setup_admin(client)
     return client
 
 

@@ -36,10 +36,13 @@ export function intlLocale(): string {
   return LOCALES.find((l) => l.id === locale)?.intl ?? "en-US";
 }
 
-/** Switch language. The page reloads so every string is rendered again. */
-export function setLocale(next: Locale): void {
+/** Switch language. Callers that re-render their own view can keep it mounted. */
+export function setLocale(next: Locale, reload = true): void {
   localStorage.setItem(KEY, next);
-  if (next !== locale) location.reload();
+  if (next === locale) return;
+  locale = next;
+  document.documentElement.lang = intlLocale();
+  if (reload) location.reload();
 }
 
 export function t(text: string, vars?: Record<string, string | number>): string {

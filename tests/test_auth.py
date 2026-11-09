@@ -1,38 +1,50 @@
 from __future__ import annotations
 
-from pathlib import Path
+from concurrent.futures import ThreadPoolExecutor
+from threading import Barrier
 
 from fastapi.testclient import TestClient
 
 from tests.conftest import PASSWORD, setup_admin
 
 
-def test_setup_requires_token(client: TestClient, data_dir: Path) -> None:
+def test_first_setup_creates_admin(client: TestClient) -> None:
     assert client.get("/api/auth/status").json() == {
         "setup_required": True,
         "authenticated": False,
     }
     r = client.post(
         "/api/auth/setup",
-        json={"setup_token": "wrong", "username": "admin", "password": PASSWORD},
+        json={"username": "admin", "password": "short"},
     )
-    assert r.status_code == 403
-    setup_admin(client, data_dir)
-    assert not (data_dir / "setup-token.txt").exists()
+    assert r.status_code == 400
+    setup_admin(client)
     status = client.get("/api/auth/status").json()
     assert status == {"setup_required": False, "authenticated": True}
     # Setup cannot run twice.
-    r = client.post(
-        "/api/auth/setup", json={"setup_token": "x", "username": "evil", "password": PASSWORD}
-    )
+    r = client.post("/api/auth/setup", json={"username": "other-admin", "password": PASSWORD})
     assert r.status_code == 409
 
 
-def test_session_cookie_flags(client: TestClient, data_dir: Path) -> None:
-    token = (data_dir / "setup-token.txt").read_text().strip()
+def test_simultaneous_setup_creates_one_admin(client: TestClient) -> None:
+    start = Barrier(2)
+
+    def claim(username: str) -> tuple[str, int]:
+        start.wait(timeout=5)
+        response = client.post("/api/auth/setup", json={"username": username, "password": PASSWORD})
+        return username, response.status_code
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        results = dict(pool.map(claim, ("admin-one", "admin-two")))
+
+    assert sorted(results.values()) == [200, 409]
+    assert results[client.get("/api/auth/me").json()["username"]] == 200
+
+
+def test_session_cookie_flags(client: TestClient) -> None:
     r = client.post(
         "/api/auth/setup",
-        json={"setup_token": token, "username": "admin", "password": PASSWORD},
+        json={"username": "admin", "password": PASSWORD},
     )
     cookie = r.headers["set-cookie"].lower()
     assert "httponly" in cookie and "samesite=strict" in cookie

@@ -43,14 +43,15 @@ def reset_cache() -> None:
     _fernet = None
 
 
-def set_secret(db: Session, name: str, value: str) -> None:
+def set_secret(db: Session, name: str, value: str, *, commit: bool = True) -> None:
     token = fernet().encrypt(value.encode()).decode()
     row = db.get(Secret, name)
     if row is None:
         db.add(Secret(name=name, ciphertext=token))
     else:
         row.ciphertext = token
-    db.commit()
+    if commit:
+        db.commit()
 
 
 def get_secret(db: Session, name: str) -> str | None:

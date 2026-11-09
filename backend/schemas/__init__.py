@@ -9,7 +9,6 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class SetupRequest(BaseModel):
-    setup_token: str = Field(min_length=1, max_length=64)
     username: str = Field(min_length=3, max_length=64, pattern=r"^[A-Za-z0-9_.\-]+$")
     password: str = Field(min_length=1, max_length=256)
     alpaca_api_key: str | None = Field(default=None, max_length=128)
