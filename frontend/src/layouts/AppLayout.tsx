@@ -1,9 +1,12 @@
+import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import {
   Activity,
   CandlestickChart,
+  Check,
   Eye,
   EyeOff,
   FlaskConical,
+  Languages,
   LayoutDashboard,
   LogOut,
   Monitor,
@@ -14,11 +17,10 @@ import {
   Workflow,
 } from "lucide-react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
-import { LanguageSelect } from "@/components/LanguageSelect";
 import { useAuth } from "@/hooks/useAuth";
 import { usePrivacy } from "@/hooks/usePrivacy";
 import { type Theme, useTheme } from "@/hooks/useTheme";
-import { getLocale, setLocale, t } from "@/lib/i18n";
+import { getLocale, LOCALES, setLocale, t, type Locale } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 const NAV = [
@@ -32,6 +34,7 @@ const NAV = [
 
 const NEXT_THEME: Record<Theme, Theme> = { light: "dark", dark: "system", system: "light" };
 const THEME_ICON = { light: Sun, dark: Moon, system: Monitor };
+const railButtonClass = "press-feedback flex size-10 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-accent hover:text-foreground [&_svg]:size-[18px]";
 
 function RailButton({
   label,
@@ -50,10 +53,47 @@ function RailButton({
       aria-label={label}
       aria-pressed={pressed}
       title={label}
-      className="press-feedback flex size-10 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-accent hover:text-foreground [&_svg]:size-[18px]"
+      className={railButtonClass}
     >
       {children}
     </button>
+  );
+}
+
+function LanguageMenu({ side }: { side: "right" | "bottom" }) {
+  return (
+    <DropdownMenu.Root>
+      <DropdownMenu.Trigger
+        className={cn(railButtonClass, "data-[state=open]:bg-accent data-[state=open]:text-foreground")}
+        aria-label={t("Language")}
+        title={t("Language")}
+      >
+        <Languages aria-hidden />
+      </DropdownMenu.Trigger>
+      <DropdownMenu.Portal>
+        <DropdownMenu.Content
+          side={side}
+          align="end"
+          sideOffset={8}
+          collisionPadding={8}
+          className="language-menu z-50 min-w-32 rounded-xl border bg-card p-1 text-card-foreground shadow-md"
+        >
+          <DropdownMenu.RadioGroup value={getLocale()} onValueChange={(value) => setLocale(value as Locale)}>
+            {LOCALES.map(({ id, label, intl }) => (
+              <DropdownMenu.RadioItem
+                key={id}
+                value={id}
+                lang={intl}
+                className="flex min-h-9 cursor-default items-center justify-between gap-4 rounded-lg px-2.5 text-sm outline-none data-[highlighted]:bg-accent"
+              >
+                {label}
+                <DropdownMenu.ItemIndicator><Check className="size-4" aria-hidden /></DropdownMenu.ItemIndicator>
+              </DropdownMenu.RadioItem>
+            ))}
+          </DropdownMenu.RadioGroup>
+        </DropdownMenu.Content>
+      </DropdownMenu.Portal>
+    </DropdownMenu.Root>
   );
 }
 
@@ -104,7 +144,7 @@ export function AppLayout() {
           <RailButton label={privacy ? t("Show amounts") : t("Hide amounts")} onClick={togglePrivacy} pressed={privacy}>
             {privacy ? <EyeOff /> : <Eye />}
           </RailButton>
-          <LanguageSelect className="h-8 w-[4.5rem] px-1 text-xs" value={getLocale()} onChange={setLocale} />
+          <LanguageMenu side="right" />
           <RailButton label={`Theme: ${theme}`} onClick={() => setTheme(NEXT_THEME[theme])}>
             <ThemeIcon />
           </RailButton>
@@ -124,7 +164,7 @@ export function AppLayout() {
             <RailButton label={privacy ? t("Show amounts") : t("Hide amounts")} onClick={togglePrivacy} pressed={privacy}>
               {privacy ? <EyeOff /> : <Eye />}
             </RailButton>
-            <LanguageSelect className="h-8 w-[4.5rem] px-1 text-xs" value={getLocale()} onChange={setLocale} />
+            <LanguageMenu side="bottom" />
             <RailButton label={`Theme: ${theme}`} onClick={() => setTheme(NEXT_THEME[theme])}>
               <ThemeIcon />
             </RailButton>

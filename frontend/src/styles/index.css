@@ -161,6 +161,11 @@
     animation: dialog-enter 200ms var(--ease-out);
   }
 
+  html[data-input="pointer"] .language-menu[data-state="open"] {
+    transform-origin: var(--radix-dropdown-menu-content-transform-origin);
+    animation: dialog-enter 150ms var(--ease-out);
+  }
+
   html[data-input="pointer"] :is(.dialog-overlay, .dialog-panel)[data-state="closed"] {
     animation: fade-out 120ms var(--ease-out);
   }
