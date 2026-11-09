@@ -115,6 +115,7 @@ jobs:
           curl -fsS http://127.0.0.1:8000/ | grep -q '<div id="root">'
           test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8000/api/strategies)" = 401
           curl -fsS http://127.0.0.1:8000/api/auth/status | jq -e '.setup_required and (.authenticated | not)'
+          docker exec ui python -W 'error::RuntimeWarning:polars._cpu_check' -c 'from polars.meta.versions import get_runtime_repr; assert get_runtime_repr() == "rtcompat"'
           test "$(docker exec ui id -u)" = 10001
           docker stop -t 30 ui
           docker logs ui 2>&1 | tail -n 5
