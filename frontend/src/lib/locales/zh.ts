@@ -605,6 +605,7 @@ export const zh: Record<string, string> = {
 
   // Broker profiles
   "All accounts": "全部账户",
+  Accounts: "账户",
   "Account name": "账户名称",
   "Account name (optional)": "账户名称（选填）",
   "Add account": "添加账户",

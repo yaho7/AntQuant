@@ -2,7 +2,6 @@ import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import {
   CandlestickChart,
   Check,
-  ChevronDown,
   CircleUserRound,
   Eye,
   EyeOff,
@@ -41,6 +40,9 @@ const NAV = [
 const NEXT_THEME: Record<Theme, Theme> = { light: "dark", dark: "system", system: "light" };
 const THEME_ICON = { light: Sun, dark: Moon, system: Monitor };
 const railButtonClass = "press-feedback flex size-10 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-accent hover:text-foreground [&_svg]:size-[18px]";
+const railMenuButtonClass = cn(railButtonClass, "data-[state=open]:bg-accent data-[state=open]:text-foreground");
+const railNavClass = "press-feedback group flex w-16 flex-col items-center gap-1 rounded-xl py-2 text-[10px] font-medium text-muted-foreground transition-colors hover:text-foreground";
+const railNavIconClass = "flex h-8 w-11 items-center justify-center rounded-full transition-colors group-hover:bg-accent";
 
 function RailButton({
   label,
@@ -70,7 +72,7 @@ function LanguageMenu({ side }: { side: "right" | "bottom" }) {
   return (
     <DropdownMenu.Root>
       <DropdownMenu.Trigger
-        className={cn(railButtonClass, "data-[state=open]:bg-accent data-[state=open]:text-foreground")}
+        className={railMenuButtonClass}
         aria-label={t("Language")}
         title={t("Language")}
       >
@@ -112,20 +114,21 @@ function ProfileMenu({ profileId, mobile, trading }: {
   const navigate = useNavigate();
   const profile = data?.profiles.find((item) => item.id === profileId);
   const current = profile ? profileLabel(profile) : t("All accounts");
-  const Icon = profile ? CircleUserRound : Layers3;
   return (
     <DropdownMenu.Root>
       <DropdownMenu.Trigger
-        className={cn(
-          "press-feedback flex items-center gap-1 rounded-xl text-foreground hover:bg-accent data-[state=open]:bg-accent",
-          mobile ? "h-10 min-w-0 px-1.5" : "mb-2 size-10 justify-center",
-        )}
+        className={mobile ? railMenuButtonClass : cn(railNavClass, "data-[state=open]:text-foreground")}
         aria-label={t("Switch account: {account}", { account: current })}
-        title={current}
+        title={t("Switch account: {account}", { account: current })}
       >
-        {mobile ? <span className="truncate text-sm font-semibold">{current}</span>
-          : <Icon className="size-[18px]" aria-hidden />}
-        <ChevronDown className="size-3 shrink-0 text-muted-foreground" aria-hidden />
+        {mobile ? <CircleUserRound aria-hidden /> : (
+          <>
+            <span className={cn(railNavIconClass, "group-data-[state=open]:bg-accent")}>
+              <CircleUserRound className="size-[18px]" aria-hidden />
+            </span>
+            {t("Accounts")}
+          </>
+        )}
       </DropdownMenu.Trigger>
       <DropdownMenu.Portal>
         <DropdownMenu.Content side={mobile ? "bottom" : "right"} align="start" sideOffset={8} collisionPadding={8}
@@ -165,12 +168,12 @@ export function AppLayout() {
   const ThemeIcon = THEME_ICON[theme];
   return (
     <div className="flex min-h-full">
-      <aside className="sticky top-0 hidden h-screen w-[76px] shrink-0 flex-col items-center gap-1 py-4 md:flex">
-        <div className="mb-5 flex size-10 items-center justify-center rounded-xl bg-primary text-primary-foreground" title={t("AntQuant")}>
+      <aside className="sticky top-0 hidden h-screen w-[76px] shrink-0 flex-col items-center gap-1 overflow-y-auto py-4 md:flex">
+        <div className="mb-5 flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground" title={t("AntQuant")}>
           <BrandIcon className="size-6" />
         </div>
-        <ProfileMenu profileId={profileId} trading={pathname.endsWith("/trading")} />
         <nav className="flex flex-col items-center gap-1" aria-label={t("Main")}>
+          <ProfileMenu profileId={profileId} trading={pathname.endsWith("/trading")} />
           {nav.map(({ to, label, icon: Icon, end }) => (
             <NavLink
               key={to}
@@ -179,7 +182,7 @@ export function AppLayout() {
               title={t(label)}
               className={({ isActive }) =>
                 cn(
-                  "press-feedback group flex w-16 flex-col items-center gap-1 rounded-xl py-2 text-[10px] font-medium text-muted-foreground transition-colors hover:text-foreground",
+                  railNavClass,
                   isActive && "text-foreground",
                 )
               }
@@ -188,7 +191,7 @@ export function AppLayout() {
                 <>
                   <span
                     className={cn(
-                      "flex h-8 w-11 items-center justify-center rounded-full transition-colors group-hover:bg-accent",
+                      railNavIconClass,
                       isActive && "bg-card shadow-sm ring-1 ring-border",
                     )}
                   >
@@ -219,8 +222,9 @@ export function AppLayout() {
           <div className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
             <BrandIcon className="size-5" />
           </div>
-          <ProfileMenu profileId={profileId} mobile trading={pathname.endsWith("/trading")} />
-          <div className="ml-auto flex shrink-0 items-center">
+          <span className="min-w-0 flex-1 truncate text-sm font-semibold">{t("AntQuant")}</span>
+          <div className="flex shrink-0 items-center">
+            <ProfileMenu profileId={profileId} mobile trading={pathname.endsWith("/trading")} />
             <RailButton label={privacy ? t("Show amounts") : t("Hide amounts")} onClick={togglePrivacy} pressed={privacy}>
               {privacy ? <EyeOff /> : <Eye />}
             </RailButton>
