@@ -16,8 +16,10 @@ public Python API from separate worker processes.
 | Logs | System, API error, audit and per-task logs with level filter, search, auto-refresh and download |
 | Settings | Alpaca keys (write-only, encrypted), backtest defaults, timeouts, password, versions, LumiBot compatibility check, update check, audit log |
 
-Choose Alpaca or Charles Schwab in the broker settings. For Alpaca, enter the trading
-endpoint and the matching API keys. To allow real orders, set
+Add Alpaca or Charles Schwab accounts in Settings. Each account has its own profile,
+including its balances, positions, orders, strategy runs and Wealthfolio target. Use the
+account switcher to open a profile or see totals by currency across all accounts. For
+Alpaca, enter the trading endpoint and the matching API keys. To allow real orders, set
 `LUMIBOT_UI_LIVE_TRADING_ENABLED=true` in the server environment (under `environment`
 for the Compose service) and recreate the container.
 
@@ -181,14 +183,16 @@ account-wide liquidation are available with Alpaca.
 
 ### Wealthfolio
 
-In **Settings → Wealthfolio**, enter the base URL of your Wealthfolio web server and its
-password if required. Load the accounts, choose the destination, then enable fill sync.
-The link is tied to the broker account selected at setup. Use the address reachable
-from the AntQuant container, such as the Wealthfolio service name on a shared Docker network.
+In an account profile's **Wealthfolio** card, enter the base URL of your Wealthfolio web
+server and its password if required. Load the accounts, choose the destination, then enable
+fill sync. Each broker account can use its own endpoint and destination. Use an address
+reachable from AntQuant, such as the Wealthfolio service name on a shared Docker network.
 
 New stock and ETF fills from strategy runs are added as BUY or SELL activities, including
 partial fills. Pending deliveries survive restarts and are retried with stable
-idempotency keys. Reconnecting the same destination resumes its pending queue.
+idempotency keys. Changing the target preserves the original destination for orders that
+were already routed, including later partial fills. Reconnecting a paused destination
+resumes its pending queue.
 The integration writes to the web server and starts with new strategy fills.
 
 ### Account vs. strategy results
@@ -248,7 +252,6 @@ never reaches a published image.
 
 ## Known limitations
 
-* One broker account is active at a time.
 * Per-strategy P&L on a shared account is not attributed.
 * Pause only filters orders placed through `submit_order` / `submit_orders`; code that calls
   the broker object directly bypasses it.

@@ -1,157 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2, KeyRound, RefreshCw, Trash2, XCircle } from "lucide-react";
+import { CheckCircle2, RefreshCw, XCircle } from "lucide-react";
 import * as React from "react";
-import { AlpacaKeysForm } from "@/components/AlpacaKeysForm";
-import { BrokerPicker, SchwabForm } from "@/components/BrokerConnection";
-import { ConfirmDialog, PageHeader, QueryBoundary } from "@/components/common";
-import { WealthfolioCard } from "@/components/WealthfolioCard";
+import { PageHeader, QueryBoundary } from "@/components/common";
+import { BrokerProfilesCard } from "@/components/BrokerProfilesCard";
 import { useToast } from "@/components/toast";
 import { Button } from "@/components/ui/button";
 import { Alert, Badge, Card, CardContent, CardHeader, CardTitle, Field, Input, Select, Table, Td, Th } from "@/components/ui/primitives";
 import { useSettings } from "@/hooks/queries";
 import { bytes, dateTime, duration } from "@/lib/format";
 import { api } from "@/services/api";
-import type { AuditEntry, BrokerName, CompatReport, SettingsView, SystemInfo, UpdateInfo } from "@/types/api";
+import type { AuditEntry, CompatReport, SettingsView, SystemInfo, UpdateInfo } from "@/types/api";
 import { t } from "@/lib/i18n";
-
-function AlpacaSettings({ view }: { view: SettingsView }) {
-  const qc = useQueryClient();
-  const toast = useToast();
-  const [replace, setReplace] = React.useState(false);
-  const [remove, setRemove] = React.useState(false);
-  const test = useMutation({
-    mutationFn: () => api.post<{ ok: boolean; error?: string; account_id?: string; status?: string }>("/api/settings/alpaca/test"),
-  });
-  const del = useMutation({
-    mutationFn: () => api.del("/api/settings/alpaca/credentials"),
-    onSuccess: () => {
-      setRemove(false);
-      void qc.invalidateQueries();
-      toast.success("Alpaca keys removed");
-    },
-    onError: toast.error,
-  });
-  const a = view.alpaca;
-  return (
-    <>
-        {a.configured && !replace ? (
-          <>
-            <p className="flex items-center gap-2 text-sm">{t("Key ID")} <span className="font-mono">{a.api_key_hint}</span> </p>
-            {a.endpoint && <p className="break-all text-xs text-muted-foreground">{t("Endpoint")} <span className="font-mono">{a.endpoint}</span></p>}
-            {test.data && (test.data.ok ? (
-              <Alert tone="info"><CheckCircle2 className="text-gain" />
-                {t("Connected to account {account} ({status}).", {
-                  account: test.data.account_id ?? "",
-                  status: test.data.status ?? "",
-                })}
-              </Alert>
-            ) : (
-              <Alert tone="loss">{t(test.data.error ?? "Connection failed")}</Alert>
-            ))}
-            <div className="flex flex-wrap gap-2">
-              <Button variant="outline" size="sm" loading={test.isPending} onClick={() => test.mutate()}>{t("Test connection")}</Button>
-              <Button variant="outline" size="sm" onClick={() => setReplace(true)}><KeyRound /> {t("Replace keys")}</Button>
-              <Button variant="ghost" size="sm" onClick={() => setRemove(true)}><Trash2 /> {t("Remove")}</Button>
-            </div>
-          </>
-        ) : (
-          <>
-            <AlpacaKeysForm initialEndpoint={a.endpoint ?? undefined} onSaved={() => {
-              test.reset();
-              setReplace(false);
-              toast.success("Alpaca keys saved");
-            }} />
-            {replace && <Button variant="ghost" size="sm" onClick={() => setReplace(false)}>{t("Cancel")}</Button>}
-          </>
-        )}
-      <ConfirmDialog open={remove} onOpenChange={setRemove} title={t("Remove Alpaca keys?")}
-        description={t("Dashboard and trading will stop working until new keys are added. Running strategies must be stopped first.")}
-        confirmLabel={t("Remove keys")} destructive loading={del.isPending} onConfirm={() => del.mutate()} />
-    </>
-  );
-}
-
-function SchwabSettings({ view }: { view: SettingsView }) {
-  const qc = useQueryClient();
-  const toast = useToast();
-  const [reauthorize, setReauthorize] = React.useState(false);
-  const [remove, setRemove] = React.useState(false);
-  const state = view.schwab;
-  const disconnect = useMutation({
-    mutationFn: () => api.del("/api/settings/schwab/connection"),
-    onSuccess: () => { setRemove(false); void qc.invalidateQueries(); toast.success("Schwab disconnected"); },
-    onError: toast.error,
-  });
-  if (!state.configured || reauthorize) {
-    return (
-      <>
-        <SchwabForm hasSavedApp={state.configured} initialCallback={state.callback_url ?? undefined} onSaved={() => {
-          setReauthorize(false);
-          toast.success("Schwab connected");
-        }} />
-        {reauthorize && <Button variant="ghost" className="justify-self-start" onClick={() => setReauthorize(false)}>{t("Cancel")}</Button>}
-      </>
-    );
-  }
-  const expires = state.authorization_expires_at ? Date.parse(state.authorization_expires_at) : 0;
-  const remaining = expires - Date.now();
-  return (
-    <>
-      <p className="text-sm">{t("Account")} <span className="font-mono">{state.account_hint}</span></p>
-      <p className="break-all text-xs text-muted-foreground">{t("Endpoint")} <span className="font-mono">{state.endpoint}</span></p>
-      <p className="text-sm">{t("Authorization expires {time}", { time: dateTime(state.authorization_expires_at) })}</p>
-      {remaining <= 86_400_000 && (
-        <Alert tone={remaining <= 0 ? "loss" : "warning"}>
-          {t(remaining <= 0 ? "Schwab authorization expired. Reconnect in Settings." : "Schwab authorization expires within 24 hours. Renew it to keep strategies connected.")}
-        </Alert>
-      )}
-      <div className="flex flex-wrap gap-2">
-        <Button variant="outline" size="sm" onClick={() => setReauthorize(true)}><KeyRound /> {t("Renew authorization")}</Button>
-        <Button variant="ghost" size="sm" onClick={() => setRemove(true)}><Trash2 /> {t("Remove")}</Button>
-      </div>
-      <ConfirmDialog open={remove} onOpenChange={setRemove} title={t("Disconnect Schwab?")}
-        description={t("Disconnecting clears the saved Schwab authorization.")}
-        confirmLabel={t("Disconnect")} destructive loading={disconnect.isPending} onConfirm={() => disconnect.mutate()} />
-    </>
-  );
-}
-
-function BrokerCard({ view }: { view: SettingsView }) {
-  const qc = useQueryClient();
-  const toast = useToast();
-  const [broker, setBroker] = React.useState<BrokerName>(view.active_broker);
-  const configured = broker === "alpaca" ? view.alpaca.configured : view.schwab.configured;
-  const active = broker === view.active_broker && configured;
-  const select = useMutation({
-    mutationFn: () => api.put("/api/settings/broker/active", { broker }),
-    onSuccess: async () => {
-      await qc.invalidateQueries();
-      toast.success("Active broker updated");
-    },
-    onError: toast.error,
-  });
-  return (
-    <Card>
-      <CardHeader>
-        <div>
-          <CardTitle>{t("Broker connection")}</CardTitle>
-          <p className="mt-1 text-xs text-muted-foreground">{t("Choose the broker used for account data and strategy orders.")}</p>
-        </div>
-        {active ? <Badge className="shrink-0 self-start" tone="gain"><CheckCircle2 /> {t("Active broker")}</Badge>
-          : configured ? <Badge className="shrink-0 self-start">{t("Configured")}</Badge>
-            : <Badge className="shrink-0 self-start"><XCircle /> {t("Not configured")}</Badge>}
-      </CardHeader>
-      <CardContent className="grid gap-3">
-        <BrokerPicker value={broker} onChange={setBroker} />
-        {configured && !active && (
-          <Button className="justify-self-start" variant="outline" size="sm" loading={select.isPending}
-            onClick={() => select.mutate()}>{t("Use this broker")}</Button>
-        )}
-        {broker === "alpaca" ? <AlpacaSettings view={view} /> : <SchwabSettings view={view} />}
-      </CardContent>
-    </Card>
-  );
-}
 
 function BacktestSettingsCard({ view }: { view: SettingsView }) {
   const qc = useQueryClient();
@@ -340,8 +199,7 @@ export function SettingsPage() {
         {(view) => (
           <div className="grid gap-4 lg:grid-cols-2">
             <div className="grid content-start gap-4">
-              <BrokerCard view={view} />
-              <WealthfolioCard />
+              <BrokerProfilesCard />
               <BacktestSettingsCard view={view} />
               <PasswordCard />
             </div>

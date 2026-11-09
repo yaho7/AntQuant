@@ -20,30 +20,34 @@ import { useToast } from "@/components/toast";
 import { Button } from "@/components/ui/button";
 import { Alert, Card, CardContent, CardHeader, CardTitle, Table, Td, Th } from "@/components/ui/primitives";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useAccountSummary, useOrders, usePositions, useTradingMode, useTradingTasks } from "@/hooks/queries";
+import { useAccountSummary, useOrders, usePositions, useProfiles, useTradingTasks } from "@/hooks/queries";
 import { between, dateTime, duration, money, signedMoney } from "@/lib/format";
 import { api } from "@/services/api";
 import { t } from "@/lib/i18n";
+import { profileLabel, taskProfileLabel } from "@/lib/profiles";
+import { qs } from "@/services/api";
+import type { BrokerProfile } from "@/types/api";
 
-export function TradingPage() {
+export function TradingPage({ profile }: { profile?: BrokerProfile }) {
   const qc = useQueryClient();
   const toast = useToast();
-  const summary = useAccountSummary();
+  const summary = useAccountSummary(profile?.id);
   const account = summary.data?.account;
   const connected = !!account;
-  const positions = usePositions(connected);
-  const openOrders = useOrders(connected, "open", 100);
-  const closedOrders = useOrders(connected, "closed", 100);
-  const tasks = useTradingTasks();
-  const { data: tradingMode } = useTradingMode();
-  const live = tradingMode?.mode === "live";
-  const canLiquidate = connected && tradingMode?.can_liquidate && account.paper === !live &&
-    (!live || tradingMode.live_available);
+  const positions = usePositions(connected, profile?.id);
+  const openOrders = useOrders(connected, profile?.id, "open", 100);
+  const closedOrders = useOrders(connected, profile?.id, "closed", 100);
+  const tasks = useTradingTasks(profile?.id);
+  const running = useTradingTasks(undefined, true);
+  const { data: profiles } = useProfiles();
+  const live = profile?.mode === "live";
+  const canLiquidate = connected && profile?.can_liquidate && account.paper === !live &&
+    (!live || profiles?.live_available);
   const [confirmEmergency, setConfirmEmergency] = React.useState(false);
   const [confirmLiquidate, setConfirmLiquidate] = React.useState(false);
 
   const unrealized = (positions.data ?? []).reduce((s, p) => s + (p.unrealized_pl ?? 0), 0);
-  const activeTasks = (tasks.data ?? []).filter((task) => ["pending", "starting", "running"].includes(task.status));
+  const activeTasks = running.data ?? [];
 
   const emergency = useMutation({
     mutationFn: () => api.post<{ stopped: string[] }>("/api/trading/emergency-stop"),
@@ -55,7 +59,7 @@ export function TradingPage() {
     onError: toast.error,
   });
   const liquidate = useMutation({
-    mutationFn: (phrase: string) => api.post("/api/trading/liquidate", { confirm: phrase, cancel_orders: true }),
+    mutationFn: (phrase: string) => api.post("/api/trading/liquidate", { confirm: phrase, cancel_orders: true, profile_id: profile?.id }),
     onSuccess: () => {
       setConfirmLiquidate(false);
       toast.success("Liquidation orders submitted to Alpaca");
@@ -68,12 +72,12 @@ export function TradingPage() {
     <>
       <PageHeader
         title={t("Trading")}
-        description={t("Strategy trading on your connected broker account.")}
+        description={profile ? profileLabel(profile) : t("Strategy runs across all broker accounts.")}
         actions={
           <>
-            <Button variant="outline" disabled={activeTasks.length === 0} onClick={() => setConfirmEmergency(true)}>
-              <OctagonX /> {t("Emergency stop all")} </Button>
-            {tradingMode?.can_liquidate && (
+            {!profile && <Button variant="outline" disabled={activeTasks.length === 0} onClick={() => setConfirmEmergency(true)}>
+              <OctagonX /> {t("Emergency stop all")} </Button>}
+            {profile?.can_liquidate && (
               <Button variant="destructive" disabled={!canLiquidate} onClick={() => setConfirmLiquidate(true)}>
                 <Flame /> {t("Liquidate account")}
               </Button>
@@ -82,7 +86,7 @@ export function TradingPage() {
         }
       />
 
-      {tradingMode?.authorization_expired ? (
+      {profile?.authorization_expired ? (
         <Alert tone="warning" className="mb-4">
           <Lock />
           <div className="grid gap-2">
@@ -93,15 +97,15 @@ export function TradingPage() {
           </div>
         </Alert>
       ) : live && (
-        <Alert tone={tradingMode.live_available ? "warning" : "info"} className="mb-4">
+        <Alert tone={profiles?.live_available ? "warning" : "info"} className="mb-4">
           <Lock />
-          <div><b>{t("Live account")}</b> · {t(tradingMode.live_available
+          <div><b>{t("Live account")}</b> · {t(profiles?.live_available
             ? "Orders affect real positions and funds."
             : "Live trading is disabled on this server.")}</div>
         </Alert>
       )}
 
-      {summary.isLoading ? (
+      {profile && (summary.isLoading ? (
         <LoadingState rows={2} />
       ) : summary.error ? (
         <ErrorState error={summary.error} onRetry={() => summary.refetch()} />
@@ -111,13 +115,13 @@ export function TradingPage() {
         <Alert tone="loss" className="mb-4">{t(summary.data.error)}</Alert>
       ) : account ? (
         <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <StatCard label={t("Account")} value={<span className="text-base">{account.account_id}</span>} sub={<ModeBadge mode={account.paper ? "paper" : "live"} />} />
-          <StatCard label={t("Equity")} value={money(account.equity)} />
-          <StatCard label={t("Buying power")} value={money(account.buying_power)} />
+          <StatCard label={t("Account")} value={<span className="text-base">{profile.account_hint ?? profileLabel(profile)}</span>} sub={<ModeBadge mode={account.paper ? "paper" : "live"} />} />
+          <StatCard label={t("Equity")} value={money(account.equity, account.currency)} />
+          <StatCard label={t("Buying power")} value={money(account.buying_power, account.currency)} />
           <StatCard label={t("Unrealized P&L")} loading={positions.isLoading}
-            value={<Delta value={positions.data ? unrealized : null}>{signedMoney(positions.data ? unrealized : null)}</Delta>} />
+            value={<Delta value={positions.data ? unrealized : null}>{signedMoney(positions.data ? unrealized : null, account.currency)}</Delta>} />
         </div>
-      ) : null}
+      ) : null)}
 
       <Card className="mb-4">
         <CardHeader>
@@ -133,10 +137,10 @@ export function TradingPage() {
             {(list) =>
               list.length === 0 ? (
                 <EmptyState title={t("No trading runs yet")} description={t("Start a strategy from the Strategies page.")}
-                  action={<Button asChild variant="outline"><Link to="/strategies">{t("Strategies")}</Link></Button>} />
+                  action={<Button asChild variant="outline"><Link to={`/strategies${qs({ profile: profile?.id })}`}>{t("Strategies")}</Link></Button>} />
               ) : (
                 <Table>
-                  <thead><tr><Th>{t("Strategy")}</Th><Th>{t("Status")}</Th><Th>{t("Mode")}</Th><Th>{t("Started")}</Th><Th>{t("Running for")}</Th><Th>{t("Last iteration")}</Th><Th className="text-right">{t("Controls")}</Th></tr></thead>
+                  <thead><tr><Th>{t("Strategy")}</Th>{!profile && <Th>{t("Broker account")}</Th>}<Th>{t("Status")}</Th><Th>{t("Mode")}</Th><Th>{t("Started")}</Th><Th>{t("Running for")}</Th><Th>{t("Last iteration")}</Th><Th className="text-right">{t("Controls")}</Th></tr></thead>
                   <tbody>
                     {list.map((task) => {
                       const active = ["pending", "starting", "running"].includes(task.status);
@@ -146,6 +150,7 @@ export function TradingPage() {
                             {task.strategy_id ? <Link className="font-medium hover:underline" to={`/strategies/${task.strategy_id}`}>{task.strategy_name}</Link> : task.strategy_name}
                             {task.error_message && !active && <p className="max-w-xs truncate text-xs text-muted-foreground" title={task.error_message}>{task.error_message}</p>}
                           </Td>
+                          {!profile && <Td>{taskProfileLabel(task, profiles?.profiles ?? [])}</Td>}
                           <Td><StatusBadge status={task.status} paused={task.paused} /></Td>
                           <Td><ModeBadge mode={task.mode} /></Td>
                           <Td className="num text-xs">{dateTime(task.started_at)}</Td>
@@ -154,7 +159,7 @@ export function TradingPage() {
                           <Td className="text-right">
                             <div className="flex justify-end gap-2">
                               <Button asChild size="sm" variant="ghost"><Link to={`/logs?source=task:${task.id}`}>{t("Log")}</Link></Button>
-                              {active && task.strategy_id && <TradingControls strategyId={task.strategy_id} task={task} brokerConnected={connected} />}
+                              {active && task.strategy_id && <TradingControls strategyId={task.strategy_id} task={task} />}
                             </div>
                           </Td>
                         </tr>
@@ -203,13 +208,13 @@ export function TradingPage() {
       <ConfirmDialog
         open={confirmLiquidate}
         onOpenChange={setConfirmLiquidate}
-        title={t("Liquidate the whole account?")}
+        title={t("Liquidate {account}?", { account: profile ? profileLabel(profile) : "" })}
         description={t("Cancels all open orders and submits market orders to close EVERY position in this Alpaca account, including positions opened outside AntQuant. Running strategies are not stopped and may open new positions.")}
         confirmLabel={t("Liquidate")}
         destructive
         phrase={live ? "LIQUIDATE LIVE" : "LIQUIDATE"}
         loading={liquidate.isPending}
-        onConfirm={(typed) => liquidate.mutate(typed)}
+        onConfirm={(typed) => { if (canLiquidate) liquidate.mutate(typed); }}
       >
         <Alert tone="warning"><ShieldAlert /> {t("Stop strategies first if you want the account to stay flat.")}</Alert>
       </ConfirmDialog>

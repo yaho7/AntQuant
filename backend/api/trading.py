@@ -97,7 +97,8 @@ def start(
         task = tm.start_trading(db, strategy, body.mode, body.broker, body.profile_id)
     except TaskError as exc:
         audit(db, "trading.start", strategy.name, {"error": exc.message}, ip, success=False)
-        raise HTTPException(exc.status_code, exc.message) from exc
+        status = 409 if body.profile_id and exc.status_code == 401 else exc.status_code
+        raise HTTPException(status, exc.message) from exc
     audit(
         db,
         "trading.start",
@@ -207,7 +208,9 @@ def liquidate(
             ip,
             success=False,
         )
-        raise HTTPException(exc.status_code, exc.message) from exc
+        raise HTTPException(
+            409 if exc.status_code == 401 else exc.status_code, exc.message
+        ) from exc
     audit(db, "account.liquidate", body.profile_id or "account", {"results": results}, ip)
     return {"results": results}
 

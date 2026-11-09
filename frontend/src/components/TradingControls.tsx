@@ -1,12 +1,16 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Pause, Play, Square } from "lucide-react";
 import * as React from "react";
+import { useSearchParams } from "react-router-dom";
 import { ConfirmDialog } from "@/components/common";
 import { useToast } from "@/components/toast";
 import { Button } from "@/components/ui/button";
-import { useTradingMode } from "@/hooks/queries";
+import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog";
+import { Alert, Field, Select } from "@/components/ui/primitives";
+import { useProfiles } from "@/hooks/queries";
+import { profileLabel, providerLabel } from "@/lib/profiles";
 import { api } from "@/services/api";
-import type { Task } from "@/types/api";
+import type { BrokerProfile, Task } from "@/types/api";
 import { t } from "@/lib/i18n";
 
 /**
@@ -16,37 +20,42 @@ import { t } from "@/lib/i18n";
 export function TradingControls({
   strategyId,
   task,
-  brokerConnected,
+  runningProfiles = [],
   size = "sm",
 }: {
   strategyId: number;
   task: Task | null | undefined;
-  brokerConnected: boolean;
+  runningProfiles?: string[];
   size?: "sm" | "default";
 }) {
   const qc = useQueryClient();
   const toast = useToast();
-  const { data: tradingMode } = useTradingMode();
-  const [confirmLive, setConfirmLive] = React.useState(false);
+  const { data } = useProfiles();
+  const [search] = useSearchParams();
+  const profiles = (data?.profiles ?? []).filter((profile) => profile.connected);
+  const [confirmStart, setConfirmStart] = React.useState(false);
+  const [selected, setSelected] = React.useState("");
   const [confirmStop, setConfirmStop] = React.useState(false);
-  const live = tradingMode?.mode === "live";
-  const canStart = brokerConnected && !!tradingMode && !tradingMode.authorization_expired && (!live || tradingMode.live_available);
+  const fieldId = React.useId();
+  const profile = profiles.find((item) => item.id === selected);
+  const live = profile?.mode === "live";
+  const blocked = !profile ? "Select a broker account."
+    : runningProfiles.includes(profile.id) ? "This strategy is already running on this account."
+    : profile.authorization_expired ? "Schwab authorization expired. Reconnect in Settings."
+    : live && !data?.live_available ? "Live trading is disabled on this server."
+    : null;
   const active = !!task && ["pending", "starting", "running"].includes(task.status);
   const done = () => {
     void qc.invalidateQueries({ queryKey: ["strategies"] });
     void qc.invalidateQueries({ queryKey: ["trading"] });
     void qc.invalidateQueries({ queryKey: ["system"] });
   };
-  const startHint = !brokerConnected ? "Connect a broker in Settings first"
-    : tradingMode?.authorization_expired ? "Schwab authorization expired. Reconnect in Settings."
-    : live && !canStart ? "Live trading is disabled on this server."
-    : "Start strategy";
   const start = useMutation({
-    mutationFn: (mode: "paper" | "live") =>
-      api.post<Task>("/api/trading/start", { strategy_id: strategyId, mode, broker: tradingMode?.broker }),
-    onSuccess: (_task, mode) => {
-      setConfirmLive(false);
-      toast.success(mode === "live" ? "Live trading started" : "Paper trading started");
+    mutationFn: (account: BrokerProfile) =>
+      api.post<Task>("/api/trading/start", { strategy_id: strategyId, mode: account.mode, profile_id: account.id }),
+    onSuccess: (_task, account) => {
+      setConfirmStart(false);
+      toast.success(t("Strategy started on {account}.", { account: profileLabel(account) }));
       done();
     },
     onError: toast.error,
@@ -73,25 +82,40 @@ export function TradingControls({
   if (!active) {
     return (
       <>
-        <Button
-          size={size}
-          onClick={() => live ? setConfirmLive(true) : start.mutate("paper")}
-          loading={start.isPending}
-          disabled={!canStart}
-          title={t(startHint)}
-        >
+        <Button size={size} disabled={!profiles.length}
+          title={!profiles.length ? t("Connect a broker in Settings first") : undefined}
+          onClick={() => {
+            const preferred = profiles.find((item) => item.id === search.get("profile"));
+            setSelected(preferred?.id ?? (profiles.length === 1 ? profiles[0]!.id : ""));
+            setConfirmStart(true);
+          }}>
           <Play /> {t("Start strategy")}
         </Button>
-        <ConfirmDialog
-          open={confirmLive}
-          onOpenChange={setConfirmLive}
-          title={t("Start live trading?")}
-          description={t("This strategy can place real orders using the connected broker account.")}
-          confirmLabel={t("Start live trading")}
-          destructive
-          loading={start.isPending}
-          onConfirm={() => { if (canStart && live) start.mutate("live"); }}
-        />
+        <Dialog open={confirmStart} onOpenChange={setConfirmStart}>
+          <DialogContent title={t("Start strategy")} description={t("Choose which account this strategy will trade on.")}>
+            <Field label={t("Broker account")} htmlFor={fieldId}>
+              <Select id={fieldId} value={selected} disabled={start.isPending} onChange={(event) => setSelected(event.target.value)}>
+                <option value="">{t("Choose…")}</option>
+                {profiles.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {profileLabel(item)} · {providerLabel(item.provider)}{item.account_hint ? ` · ${item.account_hint}` : ""}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+            {profile && blocked && <Alert tone="warning">{t(blocked)}</Alert>}
+            {profile && !blocked && live && (
+              <Alert tone="warning">{t("This strategy can place real orders on {account}.", { account: profileLabel(profile) })}</Alert>
+            )}
+            <DialogFooter>
+              <Button variant="ghost" disabled={start.isPending} onClick={() => setConfirmStart(false)}>{t("Cancel")}</Button>
+              <Button variant={live ? "destructive" : "default"} disabled={!!blocked} loading={start.isPending}
+                onClick={() => { if (profile && !blocked) start.mutate(profile); }}>
+                <Play /> {t(live ? "Start live trading" : "Start strategy")}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </>
     );
   }

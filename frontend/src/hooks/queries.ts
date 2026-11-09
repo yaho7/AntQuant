@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { api, qs } from "@/services/api";
 import type {
   AccountSummary,
-  BrokerName,
+  BrokerProfile,
   Backtest,
   EquityPoint,
   Order,
@@ -11,6 +11,7 @@ import type {
   Strategy,
   SystemStatus,
   TradingTask,
+  WealthfolioStatus,
 } from "@/types/api";
 
 export const keys = {
@@ -25,33 +26,35 @@ export const keys = {
   backtests: (sid?: number) => ["backtests", sid ?? "all"] as const,
 };
 
-export const useAccountSummary = () =>
-  useQuery({
-    queryKey: keys.summary,
-    queryFn: () => api.get<AccountSummary>("/api/account/summary"),
+export const accountSummaryQuery = (profileId: string | undefined) => ({
+    queryKey: [...keys.summary, profileId],
+    queryFn: () => api.get<AccountSummary>(`/api/account/summary${qs({ profile_id: profileId })}`),
     refetchInterval: 15_000,
   });
 
-export const usePositions = (enabled: boolean) =>
+export const useAccountSummary = (profileId: string | undefined) =>
+  useQuery({ ...accountSummaryQuery(profileId), enabled: !!profileId });
+
+export const usePositions = (enabled: boolean, profileId: string | undefined) =>
   useQuery({
-    queryKey: keys.positions,
-    queryFn: () => api.get<Position[]>("/api/account/positions"),
+    queryKey: [...keys.positions, profileId],
+    queryFn: () => api.get<Position[]>(`/api/account/positions${qs({ profile_id: profileId })}`),
     enabled,
     refetchInterval: 15_000,
   });
 
-export const useOrders = (enabled: boolean, status: "open" | "closed" | "all", limit = 50) =>
+export const useOrders = (enabled: boolean, profileId: string | undefined, status: "open" | "closed" | "all", limit = 50) =>
   useQuery({
-    queryKey: keys.orders(status, limit),
-    queryFn: () => api.get<Order[]>(`/api/account/orders${qs({ status, limit })}`),
+    queryKey: [...keys.orders(status, limit), profileId],
+    queryFn: () => api.get<Order[]>(`/api/account/orders${qs({ status, limit, profile_id: profileId })}`),
     enabled,
     refetchInterval: 20_000,
   });
 
-export const useHistory = (enabled: boolean, period: string) =>
+export const useHistory = (enabled: boolean, period: string, profileId: string) =>
   useQuery({
-    queryKey: keys.history(period),
-    queryFn: () => api.get<EquityPoint[]>(`/api/account/history${qs({ period })}`),
+    queryKey: [...keys.history(period), profileId],
+    queryFn: () => api.get<EquityPoint[]>(`/api/account/history${qs({ period, profile_id: profileId })}`),
     enabled,
     refetchInterval: 60_000,
   });
@@ -73,16 +76,24 @@ export const useSystemStatus = () =>
 export const useSettings = () =>
   useQuery({ queryKey: keys.settings, queryFn: () => api.get<SettingsView>("/api/settings") });
 
-export const useTradingMode = () =>
+export const useProfiles = () =>
   useQuery({
-    queryKey: ["trading", "mode"],
-    queryFn: () => api.get<{ mode: "paper" | "live"; live_available: boolean; broker: BrokerName; can_liquidate: boolean; authorization_expired: boolean }>("/api/trading/mode"),
+    queryKey: ["profiles"],
+    queryFn: () => api.get<{ profiles: BrokerProfile[]; live_available: boolean }>("/api/profiles"),
+    refetchInterval: 60_000,
   });
 
-export const useTradingTasks = () =>
+export const useWealthfolioStatuses = () =>
   useQuery({
-    queryKey: keys.trading,
-    queryFn: () => api.get<TradingTask[]>("/api/trading/tasks"),
+    queryKey: ["settings", "wealthfolio"],
+    queryFn: () => api.get<{ profiles: Record<string, WealthfolioStatus>; unassigned: number }>("/api/settings/wealthfolio/statuses"),
+    refetchInterval: 15_000,
+  });
+
+export const useTradingTasks = (profileId?: string, activeOnly = false) =>
+  useQuery({
+    queryKey: [...keys.trading, profileId, activeOnly],
+    queryFn: () => api.get<TradingTask[]>(`/api/trading/tasks${qs({ profile_id: profileId, active_only: activeOnly, limit: activeOnly ? 500 : 100 })}`),
     refetchInterval: 5_000,
   });
 

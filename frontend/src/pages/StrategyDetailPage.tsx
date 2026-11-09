@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Archive, FlaskConical, History, ScrollText } from "lucide-react";
 import * as React from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
   ConfirmDialog,
   Delta,
@@ -17,11 +17,12 @@ import { useToast } from "@/components/toast";
 import { Button } from "@/components/ui/button";
 import { Alert, Badge, Card, CardContent, CardHeader, CardTitle, Field, Input, Table, Td, Textarea, Th } from "@/components/ui/primitives";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useAccountSummary } from "@/hooks/queries";
+import { useProfiles, useStrategies, useTradingTasks } from "@/hooks/queries";
 import { dateTime, money, num, pct } from "@/lib/format";
-import { api } from "@/services/api";
+import { api, qs } from "@/services/api";
 import type { Backtest, Fill, Params, Strategy, StrategyVersion } from "@/types/api";
 import { t } from "@/lib/i18n";
+import { profileLabel, taskProfileLabel } from "@/lib/profiles";
 
 function OverviewTab({ strategy }: { strategy: Strategy }) {
   const qc = useQueryClient();
@@ -83,6 +84,7 @@ function OverviewTab({ strategy }: { strategy: Strategy }) {
 }
 
 function PerformanceTab({ strategyId }: { strategyId: number }) {
+  const { data: profiles } = useProfiles();
   const perf = useQuery({
     queryKey: ["strategy", strategyId, "performance"],
     queryFn: () => api.get<{ backtests: Backtest[]; fills: Fill[] }>(`/api/strategies/${strategyId}/performance`),
@@ -130,11 +132,15 @@ function PerformanceTab({ strategyId }: { strategyId: number }) {
                 <EmptyState title={t("No fills recorded")} />
               ) : (
                 <Table>
-                  <thead><tr><Th>{t("Time")}</Th><Th>{t("Symbol")}</Th><Th>{t("Side")}</Th><Th className="text-right">{t("Qty")}</Th><Th className="text-right">{t("Price")}</Th></tr></thead>
+                  <thead><tr><Th>{t("Time")}</Th><Th>{t("Broker account")}</Th><Th>{t("Symbol")}</Th><Th>{t("Side")}</Th><Th className="text-right">{t("Qty")}</Th><Th className="text-right">{t("Price")}</Th></tr></thead>
                   <tbody>
                     {data.fills.map((f, i) => (
                       <tr key={i}>
                         <Td className="num text-xs">{dateTime(f.time)}</Td>
+                        <Td>{(() => {
+                          const profile = profiles?.profiles.find((item) => item.id === f.profile_id);
+                          return profile ? profileLabel(profile) : f.profile_name || t("Unassigned account");
+                        })()}</Td>
                         <Td>{f.symbol}</Td>
                         <Td className="capitalize">{f.side}</Td>
                         <Td className="num text-right">{num(f.quantity, 4)}</Td>
@@ -229,17 +235,17 @@ export function StrategyDetailPage() {
   const qc = useQueryClient();
   const toast = useToast();
   const navigate = useNavigate();
-  const summary = useAccountSummary();
+  const [search] = useSearchParams();
+  const { data: profiles } = useProfiles();
+  const runs = useTradingTasks(undefined, true);
+  const active = (runs.data ?? []).filter((task) => task.strategy_id === sid);
+  const profileIds = active.map((task) => task.config.broker_key).filter((id): id is string => typeof id === "string");
   const [archiving, setArchiving] = React.useState(false);
   const strategy = useQuery({
     queryKey: ["strategy", sid],
     queryFn: () => api.get<Strategy>(`/api/strategies/${sid}`),
   });
-  const list = useQuery({
-    queryKey: ["strategies"],
-    queryFn: () => api.get<Strategy[]>("/api/strategies"),
-    refetchInterval: 5_000,
-  });
+  const list = useStrategies();
   const trading = list.data?.find((s) => s.id === sid)?.trading_task ?? null;
   const archive = useMutation({
     mutationFn: () => api.post(`/api/strategies/${sid}/archive?archived=true`),
@@ -267,15 +273,31 @@ export function StrategyDetailPage() {
             }
             actions={
               <>
-                <Button asChild variant="outline" size="sm"><Link to={`/backtesting?strategy=${s.id}`}><FlaskConical /> {t("Backtest")}</Link></Button>
+                <Button asChild variant="outline" size="sm"><Link to={`/backtesting${qs({ strategy: s.id, profile: search.get("profile") })}`}><FlaskConical /> {t("Backtest")}</Link></Button>
                 <Button asChild variant="outline" size="sm"><Link to={`/logs?strategy=${s.id}`}><ScrollText /> {t("Logs")}</Link></Button>
-                <TradingControls strategyId={s.id} task={trading} brokerConnected={!!summary.data?.connected} />
+                <TradingControls strategyId={s.id} task={null} runningProfiles={profileIds} />
                 <Button variant="ghost" size="sm" onClick={() => setArchiving(true)}><Archive /> {t("Archive")}</Button>
               </>
             }
           />
           {trading?.error_message && trading.status === "failed" && (
             <Alert tone="loss" className="mb-4">{t("Last trading run failed: {error}", { error: trading.error_message })}</Alert>
+          )}
+          {active.length > 0 && (
+            <Card className="mb-4">
+              <CardHeader><CardTitle>{t("Running strategies")}</CardTitle></CardHeader>
+              <CardContent className="grid gap-3">
+                {active.map((task) => (
+                  <div key={task.id} className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex flex-wrap items-center gap-2 text-sm">
+                      <span className="font-medium">{taskProfileLabel(task, profiles?.profiles ?? [])}</span>
+                      <StatusBadge status={task.status} paused={task.paused} />
+                    </div>
+                    <TradingControls strategyId={s.id} task={task} />
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
           )}
           <Tabs defaultValue="overview">
             <TabsList>

@@ -30,6 +30,30 @@ export interface TradingTask extends Task {
   heartbeat: Heartbeat | null;
 }
 
+export interface BrokerProfile {
+  id: string;
+  name: string;
+  provider: BrokerName;
+  account_hint: string | null;
+  connected: boolean;
+  endpoint: string | null;
+  mode: "paper" | "live";
+  callback_url: string | null;
+  authorization_expires_at: string | null;
+  authorization_expired: boolean;
+  can_liquidate: boolean;
+}
+
+export interface WealthfolioStatus {
+  configured: boolean;
+  endpoint: string | null;
+  account_name: string | null;
+  pending: number;
+  parked: number;
+  last_error: string | null;
+  last_synced_at: string | null;
+}
+
 export type Params = Record<string, unknown>;
 
 export interface Strategy {
@@ -104,6 +128,8 @@ export interface Fill {
   fee?: number;
   order_type?: string;
   task_id?: string;
+  profile_id?: string;
+  profile_name?: string;
 }
 
 export interface BacktestResult {

@@ -28,7 +28,9 @@ def _call(fn):  # type: ignore[no-untyped-def]
     try:
         return fn()
     except BrokerError as exc:
-        raise HTTPException(exc.status_code, exc.message) from exc
+        raise HTTPException(
+            409 if exc.status_code == 401 else exc.status_code, exc.message
+        ) from exc
 
 
 @router.get("/summary")

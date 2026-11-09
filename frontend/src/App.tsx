@@ -5,7 +5,7 @@ import { AppLayout } from "@/layouts/AppLayout";
 import { ConnectBrokerPage, LoginPage, SetupPage } from "@/pages/AuthPages";
 import { BacktestingPage } from "@/pages/BacktestingPage";
 import { BacktestReportPage } from "@/pages/BacktestReportPage";
-import { DashboardPage } from "@/pages/DashboardPage";
+import { ProfilePage, ProfilesPage } from "@/pages/ProfilesPage";
 import { LogsPage } from "@/pages/LogsPage";
 import { SettingsPage } from "@/pages/SettingsPage";
 import { StrategiesPage } from "@/pages/StrategiesPage";
@@ -29,7 +29,9 @@ export function App() {
     <Routes>
       <Route path="/setup/connect" element={<ConnectBrokerPage />} />
       <Route element={<AppLayout />}>
-        <Route index element={<DashboardPage />} />
+        <Route index element={<ProfilesPage />} />
+        <Route path="profiles/:profileId" element={<ProfilePage />} />
+        <Route path="profiles/:profileId/trading" element={<ProfilePage trading />} />
         <Route path="strategies" element={<StrategiesPage />} />
         <Route path="strategies/:id" element={<StrategyDetailPage />} />
         <Route path="backtesting" element={<BacktestingPage />} />

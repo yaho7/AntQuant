@@ -128,7 +128,9 @@ def save_alpaca(body: AlpacaProfile, request: Request, db: Session, profile_id: 
     try:
         identity, hint = alpaca_identity(creds)
     except BrokerError as exc:
-        raise HTTPException(exc.status_code, exc.message) from None
+        raise HTTPException(
+            409 if exc.status_code == 401 else exc.status_code, exc.message
+        ) from None
     legacy_identity = None
     if (
         legacy
@@ -245,15 +247,24 @@ def accounts(
         try:
             token, authorized = schwab.exchange(flow, body.redirect_url.strip())
         except BrokerError as exc:
-            raise HTTPException(exc.status_code, exc.message) from None
+            raise HTTPException(
+                409 if exc.status_code == 401 else exc.status_code, exc.message
+            ) from None
         db.execute(text("BEGIN IMMEDIATE"))
         flow = pending(db, flow_id, session)
         if "accounts" not in flow:
             flow.update(token=token, accounts=authorized, authorized_at=time.time())
             schwab.write_json_secret(db, flow_secret(flow_id), flow)
             db.commit()
+    connection = brokers.trading_connection(db, flow["profile_id"]) if flow["profile_id"] else None
+    required = (
+        connection.account_number if isinstance(connection, schwab.SchwabConnection) else None
+    )
     return {
-        "accounts": [{"id": i, "label": mask(a["number"])} for i, a in enumerate(flow["accounts"])]
+        "accounts": [
+            {"id": i, "label": mask(a["number"]), "required": a["number"] == required}
+            for i, a in enumerate(flow["accounts"])
+        ]
     }
 
 

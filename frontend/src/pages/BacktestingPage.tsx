@@ -7,11 +7,12 @@ import { ParamsEditor } from "@/components/ParamsEditor";
 import { useToast } from "@/components/toast";
 import { Button } from "@/components/ui/button";
 import { Alert, Card, CardContent, CardHeader, CardTitle, Field, Input, Select, Table, Td, Th } from "@/components/ui/primitives";
-import { useBacktests, useStrategies } from "@/hooks/queries";
+import { useBacktests, useProfiles, useStrategies } from "@/hooks/queries";
 import { between, dateTime, duration, num, pct } from "@/lib/format";
 import { api } from "@/services/api";
 import type { Backtest, BacktestDefaults, DataSource, Params } from "@/types/api";
 import { t } from "@/lib/i18n";
+import { profileLabel } from "@/lib/profiles";
 
 function isoDaysAgo(days: number): string {
   const d = new Date(Date.now() - days * 86400_000);
@@ -33,6 +34,11 @@ function NewBacktestForm() {
   const qc = useQueryClient();
   const toast = useToast();
   const strategies = useStrategies();
+  const { data: profiles } = useProfiles();
+  const alpaca = (profiles?.profiles ?? []).filter((profile) => profile.provider === "alpaca" && profile.connected);
+  const [selectedProfile, setSelectedProfile] = React.useState(search.get("profile") ?? "");
+  const profileId = alpaca.some((profile) => profile.id === selectedProfile) ? selectedProfile
+    : alpaca.length === 1 ? alpaca[0]!.id : "";
   const options = useQuery({
     queryKey: ["backtests", "options"],
     queryFn: () => api.get<{ data_sources: DataSource[]; defaults: BacktestDefaults }>("/api/backtests/options"),
@@ -64,6 +70,7 @@ function NewBacktestForm() {
       api.post<Backtest>("/api/backtests", {
         strategy_id: Number(strategyId),
         data_source: source,
+        profile_id: source === "alpaca" ? profileId : undefined,
         start,
         end,
         budget: Number(budget),
@@ -78,7 +85,7 @@ function NewBacktestForm() {
   });
 
   const ds = options.data?.data_sources.find((d) => d.id === source);
-  const invalid = !strategyId || !start || !end || end <= start || !(Number(budget) > 0) || !!paramsError;
+  const invalid = !strategyId || !start || !end || end <= start || !(Number(budget) > 0) || !!paramsError || (source === "alpaca" && !profileId);
 
   return (
     <Card>
@@ -105,6 +112,12 @@ function NewBacktestForm() {
                   ))}
                 </Select>
               </Field>
+              {source === "alpaca" && <Field label={t("Alpaca data account")} htmlFor="backtest-profile">
+                <Select id="backtest-profile" value={profileId} onChange={(event) => setSelectedProfile(event.target.value)}>
+                  <option value="">{t("Choose…")}</option>
+                  {alpaca.map((profile) => <option key={profile.id} value={profile.id}>{profileLabel(profile)}</option>)}
+                </Select>
+              </Field>}
               <Field label={t("Benchmark")} htmlFor="bb" hint={t("Leave empty for none.")}>
                 <Input id="bb" value={benchmark} maxLength={16} onChange={(e) => setBenchmark(e.target.value.toUpperCase())} />
               </Field>

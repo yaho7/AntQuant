@@ -2,10 +2,13 @@ import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import {
   CandlestickChart,
   Check,
+  ChevronDown,
+  CircleUserRound,
   Eye,
   EyeOff,
   FlaskConical,
   Languages,
+  Layers3,
   LayoutDashboard,
   LogOut,
   Monitor,
@@ -15,13 +18,16 @@ import {
   Sun,
   Workflow,
 } from "lucide-react";
-import { NavLink, Outlet, useLocation } from "react-router-dom";
+import { NavLink, Outlet, useLocation, useMatch, useNavigate, useSearchParams } from "react-router-dom";
 import { BrandIcon } from "@/components/BrandIcon";
 import { useAuth } from "@/hooks/useAuth";
+import { useProfiles } from "@/hooks/queries";
 import { usePrivacy } from "@/hooks/usePrivacy";
 import { type Theme, useTheme } from "@/hooks/useTheme";
 import { getLocale, LOCALES, setLocale, t, type Locale } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
+import { profileLabel, profilePath } from "@/lib/profiles";
+import { qs } from "@/services/api";
 
 const NAV = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true },
@@ -97,9 +103,62 @@ function LanguageMenu({ side }: { side: "right" | "bottom" }) {
   );
 }
 
+function ProfileMenu({ profileId, mobile, trading }: {
+  profileId: string | undefined;
+  mobile?: boolean;
+  trading: boolean;
+}) {
+  const { data } = useProfiles();
+  const navigate = useNavigate();
+  const profile = data?.profiles.find((item) => item.id === profileId);
+  const current = profile ? profileLabel(profile) : t("All accounts");
+  const Icon = profile ? CircleUserRound : Layers3;
+  return (
+    <DropdownMenu.Root>
+      <DropdownMenu.Trigger
+        className={cn(
+          "press-feedback flex items-center gap-1 rounded-xl text-foreground hover:bg-accent data-[state=open]:bg-accent",
+          mobile ? "h-10 min-w-0 px-1.5" : "mb-2 size-10 justify-center",
+        )}
+        aria-label={t("Switch account: {account}", { account: current })}
+        title={current}
+      >
+        {mobile ? <span className="truncate text-sm font-semibold">{current}</span>
+          : <Icon className="size-[18px]" aria-hidden />}
+        <ChevronDown className="size-3 shrink-0 text-muted-foreground" aria-hidden />
+      </DropdownMenu.Trigger>
+      <DropdownMenu.Portal>
+        <DropdownMenu.Content side={mobile ? "bottom" : "right"} align="start" sideOffset={8} collisionPadding={8}
+          className="language-menu z-50 max-h-[min(28rem,var(--radix-dropdown-menu-content-available-height))] min-w-48 max-w-[min(20rem,calc(100vw-1rem))] overflow-y-auto rounded-xl border bg-card p-1 text-card-foreground shadow-md">
+          <DropdownMenu.RadioGroup value={profile?.id ?? ""}
+            onValueChange={(id) => navigate(id ? `${profilePath(id)}${trading ? "/trading" : ""}` : "/")}>
+            {[{ id: "", label: t("All accounts") }, ...(data?.profiles ?? []).map((item) => ({ id: item.id, label: profileLabel(item) }))].map(({ id, label }) => (
+              <DropdownMenu.RadioItem key={id} value={id}
+                className="flex min-h-9 cursor-default items-center gap-2 rounded-lg px-2.5 text-sm outline-none data-[highlighted]:bg-accent">
+                {id ? <CircleUserRound className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+                  : <Layers3 className="size-4 shrink-0 text-muted-foreground" aria-hidden />}
+                <span className="min-w-0 flex-1 truncate">{label}</span>
+                <DropdownMenu.ItemIndicator><Check className="size-4 shrink-0" aria-hidden /></DropdownMenu.ItemIndicator>
+              </DropdownMenu.RadioItem>
+            ))}
+          </DropdownMenu.RadioGroup>
+        </DropdownMenu.Content>
+      </DropdownMenu.Portal>
+    </DropdownMenu.Root>
+  );
+}
+
 /** Icon rail on desktop, bottom tab bar on phones. */
 export function AppLayout() {
   const { pathname } = useLocation();
+  const [search] = useSearchParams();
+  const profileId = useMatch("/profiles/:profileId/*")?.params.profileId ?? search.get("profile") ?? undefined;
+  const accountPath = profileId ? profilePath(profileId) : "";
+  const nav = NAV.map((item) => ({
+    ...item,
+    to: item.to === "/" ? accountPath || "/" : item.to === "/trading" ? `${accountPath}/trading`
+      : `${item.to}${qs({ profile: profileId })}`,
+  }));
   const { me, logout } = useAuth();
   const [theme, setTheme] = useTheme();
   const [privacy, togglePrivacy] = usePrivacy();
@@ -110,8 +169,9 @@ export function AppLayout() {
         <div className="mb-5 flex size-10 items-center justify-center rounded-xl bg-primary text-primary-foreground" title={t("AntQuant")}>
           <BrandIcon className="size-6" />
         </div>
+        <ProfileMenu profileId={profileId} trading={pathname.endsWith("/trading")} />
         <nav className="flex flex-col items-center gap-1" aria-label={t("Main")}>
-          {NAV.map(({ to, label, icon: Icon, end }) => (
+          {nav.map(({ to, label, icon: Icon, end }) => (
             <NavLink
               key={to}
               to={to}
@@ -159,7 +219,7 @@ export function AppLayout() {
           <div className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
             <BrandIcon className="size-5" />
           </div>
-          <span className="min-w-0 truncate text-sm font-semibold">{t("AntQuant")}</span>
+          <ProfileMenu profileId={profileId} mobile trading={pathname.endsWith("/trading")} />
           <div className="ml-auto flex shrink-0 items-center">
             <RailButton label={privacy ? t("Show amounts") : t("Hide amounts")} onClick={togglePrivacy} pressed={privacy}>
               {privacy ? <EyeOff /> : <Eye />}
@@ -184,7 +244,7 @@ export function AppLayout() {
         className="fixed inset-x-3 bottom-3 z-40 flex justify-around rounded-2xl border bg-card/95 p-1.5 shadow-lg backdrop-blur md:hidden"
         aria-label={t("Main")}
       >
-        {NAV.map(({ to, label, icon: Icon, end }) => (
+        {nav.map(({ to, label, icon: Icon, end }) => (
           <NavLink
             key={to}
             to={to}

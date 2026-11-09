@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FileCode2, Plus, ShieldAlert, Upload } from "lucide-react";
 import * as React from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { EmptyState, PageHeader, QueryBoundary, StatusBadge } from "@/components/common";
 import { ParamsEditor } from "@/components/ParamsEditor";
 import { TradingControls } from "@/components/TradingControls";
@@ -10,9 +10,9 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Alert, Badge, Card, Field, Input, Select, Table, Td, Textarea, Th } from "@/components/ui/primitives";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useAccountSummary, useStrategies } from "@/hooks/queries";
+import { useStrategies, useTradingTasks } from "@/hooks/queries";
 import { dateTime } from "@/lib/format";
-import { api } from "@/services/api";
+import { api, qs } from "@/services/api";
 import type { DiscoveredStrategy, Params, Strategy } from "@/types/api";
 import { t } from "@/lib/i18n";
 
@@ -152,9 +152,9 @@ function AddStrategyDialog({ open, onOpenChange }: { open: boolean; onOpenChange
 
 export function StrategiesPage() {
   const strategies = useStrategies();
-  const summary = useAccountSummary();
+  const [search] = useSearchParams();
+  const running = useTradingTasks(undefined, true);
   const [adding, setAdding] = React.useState(false);
-  const connected = !!summary.data?.connected;
   return (
     <>
       <PageHeader
@@ -184,16 +184,21 @@ export function StrategiesPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {list.map((s) => (
+                  {list.map((s) => {
+                    const active = (running.data ?? []).filter((task) => task.strategy_id === s.id);
+                    const profileIds = active.map((task) => task.config.broker_key).filter((id): id is string => typeof id === "string");
+                    return (
                     <tr key={s.id} className="hover:bg-accent/40">
                       <Td>
-                        <Link to={`/strategies/${s.id}`} className="font-medium hover:underline">{s.name}</Link>
+                        <Link to={`/strategies/${s.id}${qs({ profile: search.get("profile") })}`} className="font-medium hover:underline">{s.name}</Link>
                         <p className="max-w-xs truncate text-xs text-muted-foreground">{s.source_path}</p>
                       </Td>
                       <Td className="font-mono text-xs">{s.class_name}</Td>
                       <Td><Badge>v{s.version}</Badge></Td>
                       <Td>
-                        {s.trading_task ? (
+                        {active.length ? (
+                          <Badge tone="gain">{t("{n} active runs", { n: active.length })}</Badge>
+                        ) : s.trading_task ? (
                           <StatusBadge status={s.trading_task.status} paused={s.trading_task.paused} />
                         ) : (
                           <span className="text-xs text-muted-foreground">{t("Never run")}</span>
@@ -203,13 +208,14 @@ export function StrategiesPage() {
                       <Td className="text-right">
                         <div className="flex justify-end gap-2">
                           <Button asChild size="sm" variant="ghost">
-                            <Link to={`/backtesting?strategy=${s.id}`}>{t("Backtest")}</Link>
+                            <Link to={`/backtesting${qs({ strategy: s.id, profile: search.get("profile") })}`}>{t("Backtest")}</Link>
                           </Button>
-                          <TradingControls strategyId={s.id} task={s.trading_task} brokerConnected={connected} />
+                          <TradingControls strategyId={s.id} task={null} runningProfiles={profileIds} />
                         </div>
                       </Td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </Table>
             )

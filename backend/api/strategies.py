@@ -234,7 +234,14 @@ def performance(strategy_id: int, db: Session = Depends(get_db)) -> dict[str, An
         if events.exists():
             for line in events.read_text().splitlines()[-500:]:
                 try:
-                    fills.append({**json.loads(line), "task_id": task.id})
+                    fills.append(
+                        {
+                            **json.loads(line),
+                            "task_id": task.id,
+                            "profile_id": task.config.get("broker_key"),
+                            "profile_name": task.config.get("profile_name"),
+                        }
+                    )
                 except json.JSONDecodeError:
                     continue
     fills.sort(key=lambda f: f.get("time", ""), reverse=True)

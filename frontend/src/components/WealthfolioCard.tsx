@@ -7,17 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Alert, Badge, Card, CardContent, CardHeader, CardTitle, Field, Input, Select } from "@/components/ui/primitives";
 import { dateTime } from "@/lib/format";
 import { t } from "@/lib/i18n";
-import { api } from "@/services/api";
-
-interface ConnectionStatus {
-  configured: boolean;
-  active?: boolean;
-  endpoint?: string;
-  account_name?: string;
-  pending?: number;
-  last_error?: string | null;
-  last_synced_at?: string | null;
-}
+import type { WealthfolioStatus } from "@/types/api";
+import { api, qs } from "@/services/api";
 
 interface DestinationAccount {
   id: string;
@@ -25,21 +16,25 @@ interface DestinationAccount {
   currency: string;
 }
 
-const connectionPath = "/api/settings/wealthfolio/connection";
 const queryKey = ["settings", "wealthfolio"] as const;
 
-function ConnectionForm({ initialEndpoint, onSaved }: { initialEndpoint: string; onSaved: () => void }) {
+function ConnectionForm({ profileId, initialEndpoint, onSaved }: {
+  profileId: string;
+  initialEndpoint: string;
+  onSaved: () => void;
+}) {
   const id = useId();
   const [endpoint, setEndpoint] = useState(initialEndpoint);
   const [password, setPassword] = useState("");
   const [account, setAccount] = useState("");
+  const scope = qs({ profile_id: profileId });
   const credentials = { endpoint: endpoint.trim(), password };
   const discover = useMutation({
-    mutationFn: () => api.post<{ accounts: DestinationAccount[] }>("/api/settings/wealthfolio/accounts", credentials),
+    mutationFn: () => api.post<{ accounts: DestinationAccount[] }>(`/api/settings/wealthfolio/accounts${scope}`, credentials),
     onSuccess: ({ accounts }) => setAccount(accounts[0]?.id ?? ""),
   });
   const save = useMutation({
-    mutationFn: () => api.put(connectionPath, { ...credentials, account_id: account }),
+    mutationFn: () => api.put(`/api/settings/wealthfolio/connection${scope}`, { ...credentials, account_id: account }),
     onSuccess: onSaved,
   });
   const error = save.error ?? discover.error;
@@ -77,14 +72,15 @@ function ConnectionForm({ initialEndpoint, onSaved }: { initialEndpoint: string;
   );
 }
 
-export function WealthfolioCard() {
+export function WealthfolioCard({ profileId, connected }: { profileId: string; connected: boolean }) {
   const qc = useQueryClient();
   const toast = useToast();
   const [edit, setEdit] = useState(false);
   const [remove, setRemove] = useState(false);
+  const connectionPath = `/api/settings/wealthfolio/connection${qs({ profile_id: profileId })}`;
   const query = useQuery({
-    queryKey,
-    queryFn: () => api.get<ConnectionStatus>(connectionPath),
+    queryKey: [...queryKey, profileId],
+    queryFn: () => api.get<WealthfolioStatus>(connectionPath),
     refetchInterval: (q) => q.state.data?.configured ? 10_000 : false,
   });
   const disconnect = useMutation({
@@ -92,7 +88,7 @@ export function WealthfolioCard() {
     onSuccess: async () => {
       setRemove(false);
       await qc.invalidateQueries({ queryKey });
-      toast.success("Wealthfolio disconnected");
+      toast.success("Wealthfolio sync paused");
     },
     onError: toast.error,
   });
@@ -101,9 +97,9 @@ export function WealthfolioCard() {
       <CardHeader>
         <div>
           <CardTitle>{t("Wealthfolio")}</CardTitle>
-          <p className="mt-1 text-xs text-muted-foreground">{t("Sync confirmed stock and ETF fills from the selected broker to Wealthfolio.")}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{t("Sync confirmed stock and ETF fills from this account to Wealthfolio.")}</p>
         </div>
-        {query.data?.configured && <Badge className="shrink-0 self-start" tone={query.data.active ? "gain" : "warning"}>{t(query.data.active ? "Sync enabled" : "Broker changed")}</Badge>}
+        {query.data?.configured && <Badge className="shrink-0 self-start" tone="gain">{t("Sync enabled")}</Badge>}
       </CardHeader>
       <CardContent className="grid gap-3">
         <QueryBoundary query={query}>
@@ -111,32 +107,33 @@ export function WealthfolioCard() {
             <>
               <p className="text-sm">{t("Destination account")} · <b>{state.account_name}</b></p>
               <p className="break-all font-mono text-xs text-muted-foreground">{state.endpoint}</p>
-              {!state.active && <Alert tone="warning">{t("New fills sync only from the broker account linked to this destination.")}</Alert>}
               <p className="text-xs text-muted-foreground">
                 {t("{n} fills pending", { n: state.pending ?? 0 })}
                 {state.last_synced_at && ` · ${t("Last synced {time}", { time: dateTime(state.last_synced_at) })}`}
               </p>
+              {state.parked > 0 && <Alert tone="info">{t("{n} fills paused at their original destination.", { n: state.parked })}</Alert>}
               {state.last_error && <Alert tone="warning">{t(state.last_error)}</Alert>}
               <div className="flex flex-wrap gap-2">
-                <Button variant="outline" size="sm" onClick={() => setEdit(true)}><ArrowUpRight /> {t("Edit destination")}</Button>
-                <Button variant="ghost" size="sm" onClick={() => setRemove(true)}><Unplug /> {t("Disconnect")}</Button>
+                <Button variant="outline" size="sm" disabled={!connected} onClick={() => setEdit(true)}><ArrowUpRight /> {t("Edit destination")}</Button>
+                <Button variant="ghost" size="sm" onClick={() => setRemove(true)}><Unplug /> {t("Pause sync")}</Button>
               </div>
             </>
           ) : (
             <>
-              <ConnectionForm initialEndpoint={state.endpoint ?? ""} onSaved={() => {
+              {state.parked > 0 && <Alert tone="info">{t("{n} fills paused at their original destination.", { n: state.parked })}</Alert>}
+              {connected ? <ConnectionForm profileId={profileId} initialEndpoint={state.endpoint ?? ""} onSaved={() => {
                 void qc.invalidateQueries({ queryKey });
                 setEdit(false);
                 toast.success("Wealthfolio sync enabled");
-              }} />
+              }} /> : <Alert tone="info">{t("Connect a broker before configuring Wealthfolio.")}</Alert>}
               {edit && <Button variant="ghost" size="sm" className="justify-self-start" onClick={() => setEdit(false)}>{t("Cancel")}</Button>}
             </>
           )}
         </QueryBoundary>
         <ConfirmDialog open={remove} onOpenChange={setRemove}
-          title={t("Disconnect Wealthfolio?")}
+          title={t("Pause Wealthfolio sync?")}
           description={t("New fills will stop syncing. Queued fills stay linked to their original destination.")}
-          confirmLabel={t("Disconnect")} destructive loading={disconnect.isPending} onConfirm={() => disconnect.mutate()} />
+          confirmLabel={t("Pause sync")} destructive loading={disconnect.isPending} onConfirm={() => disconnect.mutate()} />
       </CardContent>
     </Card>
   );
