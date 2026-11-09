@@ -102,7 +102,6 @@ jobs:
           tags: antquant:ci
           build-args: VERSION=${{ steps.meta.outputs.version }}
           cache-from: type=gha
-          cache-to: type=gha,mode=max
 
       - name: Smoke test the container
         run: |
