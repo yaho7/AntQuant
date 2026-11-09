@@ -10,7 +10,7 @@ public Python API from separate worker processes.
 | Area | What works in this release |
 | --- | --- |
 | Dashboard | Real Alpaca account: equity, cash, buying power, daily and period P&L, equity curve, allocation, holdings, recent trades, running tasks, system status |
-| Strategies | Scan Python uploads, start from an in-app template, edit parameters and uploaded code, restore versions, view per-strategy backtests and fills |
+| Strategies | Paste or drop LumiBot and AI-written code, see what would stop it with one-click fixes, trial-run it on a month of data, copy a prompt for AI tools, start from a template or example, edit parameters and uploaded code, restore versions, view per-strategy backtests and fills |
 | Backtesting | Real LumiBot backtests (Yahoo or Alpaca data) in a subprocess, progress, timeout, queue, metrics, equity and drawdown charts, trade list, CSV export, LumiBot tearsheet files |
 | Trading | Alpaca paper and opt-in live trading, with start, pause, resume, stop, emergency stop and account liquidation |
 | Logs | System, API error, audit and per-task logs with level filter, search, auto-refresh and download |
@@ -100,9 +100,29 @@ container user first: `mkdir data && sudo chown -R 10001:10001 data`, then use
 
 ### Your own strategies
 
-In Strategies → Add strategy, click **Upload and scan** and choose a `.py` file. AntQuant
-reads its strategy classes and default parameters without running it. You can also use the
-in-app template or register files from the volume's `strategies/` folder.
+In Strategies → Add strategy, paste a strategy you wrote for LumiBot or had an AI tool write,
+or drop a `.py` file on the editor. You can also start from the blank template, a bundled
+example or a file in the volume's `strategies/` folder. AntQuant reads the code without
+running it and lists, line by line, what would stop it from running here:
+
+* Code that starts a run when the file loads (`trader.run_all()`, `Alpaca(...)`,
+  `MyStrategy.backtest(...)`) and imports of modules the server does not have, such as a local
+  `config.py` with API keys. **Fix automatically** moves that code under
+  `if __name__ == "__main__":` and shows the change as a diff before applying it.
+* Parameters the code reads without a default, with a button to add them. Defaults come from the
+  class-level `parameters` dict, `initialize(self, symbol="SPY")` keywords,
+  `self.parameters.get("x", 1)` and the `parameters=` of a backtest call under `__main__`.
+* Hints for other data sources, minute or hour timing on daily Yahoo data, and broker keys read
+  from the environment.
+
+`import pandas_ta` works as written: the image ships the maintained `pandas_ta_classic` fork
+and workers use it under that name.
+
+**Trial run** backtests the code on the last month of daily Yahoo data, with no broker keys in
+its environment and a two-minute limit, and explains a failure with the line it happened on.
+**Writing with AI?** copies a prompt with AntQuant's rules for ChatGPT, Claude or another tool,
+and a failed check or trial can be copied to the AI together with the code and the error.
+Adding the strategy opens its first backtest.
 
 ```python
 from lumibot.strategies import Strategy
@@ -123,9 +143,9 @@ values from `self.parameters`. AntQuant supplies the selected broker account via
 `self.broker`. Use LumiBot's `self.create_order` and `self.submit_order` to apply trading
 controls and sync eligible fills to Wealthfolio.
 
-Edit uploaded code on the **Code** tab, scan it, and save it as a new version. The
-**Versions** tab can restore saved code and parameters. Each run uses the version selected
-when the task was created.
+Edit uploaded code on the **Code** tab with the same checks and trial run, and save it as a new
+version. The **Versions** tab can restore saved code and parameters. Each run uses the version
+selected when the task was created.
 
 > **Security:** strategy code is trusted administrator code. It runs in its own process with
 > the same permissions as the server: it can read the data folder and use the broker keys.
@@ -168,6 +188,8 @@ Browser ──HTTPS──> FastAPI (auth, CSRF, REST) ──> services ──> S
 * Each run gets `data/tasks/<id>/` with its spec, log, LumiBot output and result. Closing the
   browser does not stop it. On restart, runs left behind are re-attached if their process is
   still alive, otherwise marked failed. The server does not start replacement trading processes.
+* A trial run uses the same backtest worker in `data/trials/<id>/`, one at a time, and deletes
+  that folder when it ends.
 * Parameters reach workers through a JSON file, never through the command line.
 
 ### Pause, Stop and Liquidate
