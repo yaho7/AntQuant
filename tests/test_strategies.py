@@ -40,6 +40,62 @@ def test_parse_without_executing(tmp_path: Path) -> None:
     assert found[0].docstring == "Doc here."
 
 
+LUMIBOT_SCRIPT = b"""
+from datetime import datetime
+from lumibot.backtesting import YahooDataBacktesting
+from lumibot.entities import Asset
+from lumibot.strategies import Strategy
+
+DEFAULTS = {"symbol": "SPY", "asset": Asset("SPY")}
+
+
+class Swing(Strategy):
+    parameters = DEFAULTS
+
+    def initialize(self, window=10, *, hidden=2):
+        self.sleeptime = "1D"
+
+    def on_trading_iteration(self):
+        params = self.parameters
+        threshold = params["threshold"]
+        risk = self.parameters.get("risk", 0.02)
+        self.parameters["state"] = 1
+        state = self.parameters["state"]
+        lookback = self.parameters["lookback"]
+
+
+run_params = {"symbol": "AAPL", "threshold": 1.5}
+
+if __name__ == "__main__":
+    Swing.backtest(YahooDataBacktesting, datetime(2023, 1, 1), datetime(2023, 6, 1),
+                   parameters=run_params, budget=5000)
+"""
+
+
+def test_parameters_from_every_lumibot_place(tmp_path: Path) -> None:
+    f = tmp_path / "swing.py"
+    f.write_bytes(LUMIBOT_SCRIPT)
+    (item,) = parse_strategy_file(f, "user", "swing.py")
+    # Run call beats the class dict; initialize() and .get() defaults fill the rest.
+    assert item.parameters == {"symbol": "AAPL", "window": 10, "risk": 0.02, "threshold": 1.5}
+    assert [s["kind"] for s in item.parameter_sources] == ["class", "initialize", "get", "call"]
+    assert item.unread_parameters == ["asset"] and not item.parameters_parsed
+    assert item.missing_parameters == [{"name": "lookback", "line": 22}]
+
+
+def test_initialize_keywords_become_parameters(tmp_path: Path) -> None:
+    f = tmp_path / "x.py"
+    f.write_text(
+        "from lumibot.strategies import Strategy\n"
+        "class Swing(Strategy):\n"
+        "    def initialize(self, symbol='SPY', period=20):\n"
+        "        self.symbol = symbol\n"
+    )
+    (item,) = parse_strategy_file(f, "user", "x.py")
+    assert item.parameters == {"symbol": "SPY", "period": 20} and item.parameters_parsed
+    assert item.parameter_sources == [{"kind": "initialize", "line": 3}]
+
+
 def test_discover_examples(authed: TestClient) -> None:
     names = {d["class_name"] for d in authed.get("/api/strategies/discover").json()}
     assert {"BuyAndHold", "SmaCrossover"} <= names
