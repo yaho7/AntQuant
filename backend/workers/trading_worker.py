@@ -174,7 +174,18 @@ def run(work_dir: Path) -> None:
     strategy_cls = make_managed_strategy(
         load_strategy_class(spec["strategy_file"], spec["class_name"]), work_dir
     )
-    broker = Alpaca(config)
+    from backend.adapters.brokers.endpoints import ALPACA_LIVE_URL, ALPACA_PAPER_URL
+
+    endpoint = config["ENDPOINT"]
+    if endpoint and endpoint not in {ALPACA_LIVE_URL, ALPACA_PAPER_URL}:
+        from alpaca.trading.client import TradingClient
+
+        client = TradingClient(
+            config["API_KEY"], config["API_SECRET"], paper=config["PAPER"], url_override=endpoint
+        )
+        broker = Alpaca(config, trading_client=client)
+    else:
+        broker = Alpaca(config)
     strategy = strategy_cls(
         broker=broker,
         name=spec.get("name") or spec["class_name"],

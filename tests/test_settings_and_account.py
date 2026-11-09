@@ -23,6 +23,7 @@ def test_alpaca_secret_is_write_only(authed: TestClient, data_dir: Path) -> None
         "configured": True,
         "api_key_hint": "••••ABCD",
         "paper": True,
+        "endpoint": "https://paper-api.alpaca.markets",
     }
     # Stored encrypted, not in plain text in the database file.
     assert SECRET.encode() not in (data_dir / "lumibot-ui.db").read_bytes()
@@ -92,6 +93,19 @@ def test_alpaca_connection_uses_selected_endpoint(
     assert (
         endpoints == ["https://paper-api.alpaca.markets"] * 2 + ["https://api.alpaca.markets"] * 2
     )
+    custom = {
+        "api_key": KEY,
+        "api_secret": SECRET,
+        "endpoint": "https://proxy.example.test/alpaca/",
+    }
+    tested = authed.post("/api/settings/alpaca/test", json=custom)
+    saved = authed.put("/api/settings/alpaca/credentials", json=custom)
+    assert tested.json()["paper"] is False
+    assert saved.json()["endpoint"] == "https://proxy.example.test/alpaca"
+    assert authed.get("/api/account/summary").json()["account"]["paper"] is False
+    assert endpoints[-2:] == ["https://proxy.example.test/alpaca"] * 2
+    invalid = {**custom, "endpoint": "https://user:pass@proxy.example.test?key=secret"}
+    assert authed.put("/api/settings/alpaca/credentials", json=invalid).status_code == 422
     assert (
         authed.post("/api/trading/liquidate", json={"confirm": "LIQUIDATE LIVE"}).status_code == 403
     )

@@ -191,6 +191,7 @@ export interface EquityPoint {
 export interface AlpacaStatus {
   configured: boolean;
   api_key_hint: string | null;
+  endpoint: string | null;
   paper: boolean;
 }
 

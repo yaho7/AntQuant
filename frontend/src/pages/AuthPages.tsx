@@ -76,7 +76,7 @@ export function ConnectBrokerPage() {
       <div className="grid gap-4">
         <Alert tone="info">
           <KeyRound />
-          <div>{t("Choose the account type that matches your API keys. Keys are encrypted on the server.")}</div>
+          <div>{t("Enter the endpoint and matching API keys. Keys are encrypted on the server.")}</div>
         </Alert>
         <AlpacaKeysForm onSaved={finish} />
         <Button variant="ghost" onClick={finish}>{t("Skip for now")}</Button>

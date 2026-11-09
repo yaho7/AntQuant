@@ -19,6 +19,7 @@ DEFAULTS: dict[str, Any] = {
 ALPACA_KEY = "alpaca_api_key"
 ALPACA_SECRET = "alpaca_api_secret"  # noqa: S105 - secret name, not a value
 ALPACA_MODE = "alpaca_mode"
+ALPACA_ENDPOINT = "alpaca_endpoint"
 
 
 def get_setting(db: Session, key: str) -> Any:

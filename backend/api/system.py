@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 from backend import __version__
 from backend.adapters.brokers.alpaca import AlpacaAdapter
 from backend.adapters.brokers.base import BrokerError
+from backend.adapters.brokers.endpoints import is_paper_endpoint
 from backend.adapters.lumibot_adapter import (
     VERIFIED_LUMIBOT_VERSIONS,
     compatibility_report,
@@ -51,6 +52,7 @@ def _alpaca_status(db: Session) -> dict[str, Any]:
         "configured": creds is not None,
         "api_key_hint": mask(creds.key) if creds else None,
         "paper": creds.paper if creds else True,
+        "endpoint": creds.endpoint if creds else None,
     }
 
 
@@ -101,12 +103,14 @@ def put_alpaca(
     db.execute(text("BEGIN IMMEDIATE"))
     if db.scalar(select(Task.id).where(Task.kind == "trading", Task.status.in_(ACTIVE)).limit(1)):
         raise HTTPException(409, "Stop all trading strategies before replacing the keys.")
-    broker_service.save_alpaca_credentials(db, body.api_key, body.api_secret, body.paper)
+    broker_service.save_alpaca_credentials(
+        db, body.api_key, body.api_secret, body.paper, body.endpoint
+    )
     audit(
         db,
         "settings.alpaca_credentials",
         "alpaca",
-        {"action": "set", "paper": body.paper},
+        {"action": "set", "paper": _alpaca_status(db)["paper"]},
         client_ip(request),
     )
     broker_service.reset_broker()
@@ -132,7 +136,10 @@ def test_alpaca(
 ) -> dict[str, Any]:
     """Test given keys (before saving) or the stored ones."""
     if body is not None:
-        adapter: Any = AlpacaAdapter(body.api_key, body.api_secret, paper=body.paper)
+        paper = is_paper_endpoint(body.endpoint) if body.endpoint else body.paper
+        adapter: Any = AlpacaAdapter(
+            body.api_key, body.api_secret, paper=paper, endpoint=body.endpoint
+        )
     else:
         adapter = broker_service.get_broker(db)
         if adapter is None:

@@ -7,6 +7,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from backend.adapters.brokers.endpoints import validate_endpoint
+
 
 class SetupRequest(BaseModel):
     username: str = Field(min_length=3, max_length=64, pattern=r"^[A-Za-z0-9_.\-]+$")
@@ -30,6 +32,12 @@ class AlpacaCredentials(BaseModel):
     api_key: str = Field(min_length=8, max_length=128, pattern=r"^[A-Za-z0-9]+$")
     api_secret: str = Field(min_length=16, max_length=256, pattern=r"^[A-Za-z0-9/+=]+$")
     paper: bool = True
+    endpoint: str | None = Field(default=None, max_length=512)
+
+    @field_validator("endpoint")
+    @classmethod
+    def valid_endpoint(cls, value: str | None) -> str | None:
+        return validate_endpoint(value) if value is not None else None
 
 
 # Strategy parameters are JSON values passed to LumiBot as a dict. They never

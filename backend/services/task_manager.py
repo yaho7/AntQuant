@@ -35,7 +35,12 @@ from backend.core.logging import redact
 from backend.models import BacktestResult, Strategy, SystemEvent, Task
 from backend.services.broker_service import AlpacaConnection
 from backend.services.settings_store import get_setting
-from backend.workers.common import ALPACA_KEY_ENV, ALPACA_MODE_ENV, ALPACA_SECRET_ENV
+from backend.workers.common import (
+    ALPACA_ENDPOINT_ENV,
+    ALPACA_KEY_ENV,
+    ALPACA_MODE_ENV,
+    ALPACA_SECRET_ENV,
+)
 
 log = logging.getLogger("task_manager")
 
@@ -327,6 +332,7 @@ class TaskManager:
             env[ALPACA_KEY_ENV] = creds.key
             env[ALPACA_SECRET_ENV] = creds.secret
             env[ALPACA_MODE_ENV] = "paper" if creds.paper else "live"
+            env[ALPACA_ENDPOINT_ENV] = creds.endpoint
         log_file = open(task.log_path, "ab")  # noqa: SIM115 - handed to the child
         try:
             proc = subprocess.Popen(

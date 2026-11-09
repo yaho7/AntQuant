@@ -64,10 +64,13 @@ class AlpacaAdapter:
         paper: bool = True,
         client_factory: Callable[[], Any] | None = None,
         cache_seconds: float = 5.0,
+        *,
+        endpoint: str | None = None,
     ) -> None:
         self._key = api_key
         self._secret = api_secret
         self.paper = paper
+        self.endpoint = endpoint
         self._factory = client_factory
         self._client: Any = None
         self._lock = threading.Lock()
@@ -80,7 +83,7 @@ class AlpacaAdapter:
             return self._factory()
         from alpaca.trading.client import TradingClient
 
-        return TradingClient(self._key, self._secret, paper=self.paper)
+        return TradingClient(self._key, self._secret, paper=self.paper, url_override=self.endpoint)
 
     def _call(self, cache_key: str | None, fn: Callable[[Any], T]) -> T:
         if cache_key:
