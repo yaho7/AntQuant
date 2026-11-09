@@ -8,6 +8,13 @@ import { AuthProvider } from "@/hooks/useAuth";
 import { ApiError } from "@/services/api";
 import "@/styles/index.css";
 
+window.addEventListener("pointerdown", () => {
+  document.documentElement.dataset.input = "pointer";
+}, { capture: true, passive: true });
+window.addEventListener("keydown", () => {
+  document.documentElement.dataset.input = "keyboard";
+}, { capture: true });
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {

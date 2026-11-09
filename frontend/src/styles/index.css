@@ -31,6 +31,7 @@
   --chart-4: #bb7b5b;
   --chart-5: #83925b;
   --radius: 0.75rem;
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 .dark {
@@ -133,4 +134,50 @@
 }
 .privacy .sensitive:hover {
   filter: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html[data-input="pointer"] .view-enter {
+    animation: view-enter 180ms var(--ease-out);
+  }
+
+  html[data-input="pointer"] .tab-panel[data-state="active"] {
+    animation: fade-in 150ms var(--ease-out);
+  }
+
+  html[data-input="pointer"] .press-feedback {
+    transition: scale 120ms var(--ease-out), background-color 150ms ease, color 150ms ease;
+  }
+
+  html[data-input="pointer"] .press-feedback:active:not(:disabled) {
+    scale: 0.97;
+  }
+
+  html[data-input="pointer"] .dialog-overlay[data-state="open"] {
+    animation: fade-in 180ms var(--ease-out);
+  }
+
+  html[data-input="pointer"] .dialog-panel[data-state="open"] {
+    animation: dialog-enter 200ms var(--ease-out);
+  }
+
+  html[data-input="pointer"] :is(.dialog-overlay, .dialog-panel)[data-state="closed"] {
+    animation: fade-out 120ms var(--ease-out);
+  }
+}
+
+@keyframes view-enter {
+  from { opacity: 0; translate: 0 5px; }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+}
+
+@keyframes fade-out {
+  to { opacity: 0; }
+}
+
+@keyframes dialog-enter {
+  from { opacity: 0; scale: 0.98; }
 }

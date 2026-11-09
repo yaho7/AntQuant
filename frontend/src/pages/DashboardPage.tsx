@@ -31,11 +31,11 @@ import { between, duration, money, pct, signedMoney } from "@/lib/format";
 import { t } from "@/lib/i18n";
 
 const PERIODS = [
-  { v: "1W", label: t("past week"), short: "1W" },
-  { v: "1M", label: t("past month"), short: "1M" },
-  { v: "3M", label: t("past 3 months"), short: "3M" },
-  { v: "1A", label: t("past year"), short: "1Y" },
-  { v: "all", label: "all time", short: t("All") },
+  { v: "1W", label: "past week", short: "1W" },
+  { v: "1M", label: "past month", short: "1M" },
+  { v: "3M", label: "past 3 months", short: "3M" },
+  { v: "1A", label: "past year", short: "1Y" },
+  { v: "all", label: "all time", short: "All" },
 ];
 
 export function DashboardPage() {
@@ -108,7 +108,7 @@ export function DashboardPage() {
             <span className="h-4 border-e" aria-hidden />
             <span className="flex items-center gap-1.5">
               <Delta value={periodPnl}><span className="sensitive">{signedMoney(periodPnl)}</span></Delta>
-              <span className="text-muted-foreground">{PERIODS.find((p) => p.v === period)?.label}</span>
+              <span className="text-muted-foreground">{t(PERIODS.find((p) => p.v === period)?.label ?? "")}</span>
             </span>
           </div>
           {account.trading_blocked && (
@@ -130,7 +130,7 @@ export function DashboardPage() {
           <div className="mt-3 flex justify-center">
             <Segmented
               options={PERIODS.map((p) => p.v)}
-              labels={Object.fromEntries(PERIODS.map((p) => [p.v, p.short]))}
+              labels={Object.fromEntries(PERIODS.map((p) => [p.v, t(p.short)]))}
               value={period}
               onChange={setPeriod}
               ariaLabel={t("History period")}

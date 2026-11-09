@@ -15,14 +15,14 @@ import { Progress } from "./BacktestingPage";
 import { t } from "@/lib/i18n";
 
 const NATIVE_FILES: { kind: string; label: string; open?: boolean }[] = [
-  { kind: "tearsheet_html", label: t("Tearsheet (HTML)"), open: true },
-  { kind: "plot_html", label: t("Trades chart (HTML)"), open: true },
-  { kind: "indicators_html", label: t("Indicators (HTML)"), open: true },
-  { kind: "trades", label: t("LumiBot trades.csv") },
-  { kind: "stats", label: t("LumiBot stats.csv") },
-  { kind: "tearsheet_csv", label: t("Tearsheet metrics (CSV)") },
-  { kind: "tearsheet_metrics", label: t("Tearsheet metrics (JSON)") },
-  { kind: "settings", label: t("Run settings (JSON)") },
+  { kind: "tearsheet_html", label: "Tearsheet (HTML)", open: true },
+  { kind: "plot_html", label: "Trades chart (HTML)", open: true },
+  { kind: "indicators_html", label: "Indicators (HTML)", open: true },
+  { kind: "trades", label: "LumiBot trades.csv" },
+  { kind: "stats", label: "LumiBot stats.csv" },
+  { kind: "tearsheet_csv", label: "Tearsheet metrics (CSV)" },
+  { kind: "tearsheet_metrics", label: "Tearsheet metrics (JSON)" },
+  { kind: "settings", label: "Run settings (JSON)" },
 ];
 
 function Report({ id }: { id: string }) {
@@ -80,7 +80,7 @@ function Report({ id }: { id: string }) {
           {NATIVE_FILES.filter((f) => r.files[f.kind]).map((f) => (
             <Button key={f.kind} asChild size="sm" variant="outline">
               <a href={`/api/backtests/${id}/files/${f.kind}`} target={f.open ? "_blank" : undefined} rel="noreferrer">
-                {f.open ? <ExternalLink /> : <Download />} {f.label}
+                {f.open ? <ExternalLink /> : <Download />} {t(f.label)}
               </a>
             </Button>
           ))}

@@ -16,7 +16,7 @@ function Shell({ children, title, subtitle }: {
 }) {
   return (
     <div className="flex min-h-full items-center justify-center p-4">
-      <div className="w-full max-w-md">
+      <div className="view-enter w-full max-w-md">
         <div className="mb-6 flex items-center gap-2">
           <div className="flex size-8 items-center justify-center rounded-md bg-primary text-primary-foreground">
             <Activity className="size-4" />

@@ -17,7 +17,7 @@ export function TabsTrigger({ className, ...p }: React.ComponentProps<typeof T.T
   return (
     <T.Trigger
       className={cn(
-        "inline-flex h-7 items-center rounded-full px-3.5 text-xs font-medium text-muted-foreground transition-colors data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-xs",
+        "press-feedback inline-flex h-7 items-center rounded-full px-3.5 text-xs font-medium text-muted-foreground transition-colors data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-xs",
         className,
       )}
       {...p}
@@ -26,5 +26,5 @@ export function TabsTrigger({ className, ...p }: React.ComponentProps<typeof T.T
 }
 
 export function TabsContent({ className, ...p }: React.ComponentProps<typeof T.Content>) {
-  return <T.Content className={cn("mt-4", className)} {...p} />;
+  return <T.Content className={cn("tab-panel mt-4", className)} {...p} />;
 }

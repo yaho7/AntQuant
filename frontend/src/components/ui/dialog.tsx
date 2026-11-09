@@ -16,10 +16,10 @@ export function DialogContent({
 }: React.ComponentProps<typeof D.Content> & { title: string; description?: React.ReactNode }) {
   return (
     <D.Portal>
-      <D.Overlay className="fixed inset-0 z-50 bg-black/50" />
+      <D.Overlay className="dialog-overlay fixed inset-0 z-50 bg-black/50" />
       <D.Content
         className={cn(
-          "fixed left-1/2 top-1/2 z-50 grid max-h-[90vh] w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 gap-4 overflow-y-auto rounded-2xl border bg-background p-6 shadow-lg",
+          "dialog-panel fixed left-1/2 top-1/2 z-50 grid max-h-[90vh] w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 gap-4 overflow-y-auto rounded-2xl border bg-background p-6 shadow-lg",
           className,
         )}
         {...p}

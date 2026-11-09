@@ -29,7 +29,7 @@ const RANGES = [
   { label: "3M", days: 91 },
   { label: "6M", days: 182 },
   { label: "1Y", days: 365 },
-  { label: t("All"), days: 0 },
+  { label: "All", days: 0 },
 ] as const;
 
 /** Resolve a CSS variable (possibly oklch) to rgba() via a 1px canvas, for the chart engine. */
@@ -196,6 +196,7 @@ export function TimeSeriesChart({
         {showRanges && (
           <Segmented
             options={RANGES.map((r) => r.label)}
+            labels={{ All: t("All") }}
             value={range}
             onChange={(label) => applyRange(label, RANGES.find((r) => r.label === label)!.days)}
             ariaLabel={t("Time range")}
@@ -230,7 +231,7 @@ export function Segmented({
           aria-pressed={value === o}
           onClick={() => onChange(o)}
           className={cn(
-            "num h-7 rounded-full px-3 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground",
+            "press-feedback num h-7 rounded-full px-3 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground",
             value === o && "bg-background text-foreground shadow-sm",
           )}
         >
