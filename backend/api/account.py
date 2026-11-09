@@ -14,7 +14,7 @@ from backend.services.broker_service import get_broker
 
 router = APIRouter(prefix="/api/account", tags=["account"], dependencies=[Depends(require_session)])
 
-NOT_CONNECTED = "No broker account is connected. Add Alpaca paper keys in Settings."
+NOT_CONNECTED = "No broker account is connected. Add Alpaca keys in Settings."
 
 
 def _broker_or_409(db: Session) -> BrokerAdapter:

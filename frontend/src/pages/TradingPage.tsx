@@ -20,7 +20,7 @@ import { useToast } from "@/components/toast";
 import { Button } from "@/components/ui/button";
 import { Alert, Card, CardContent, CardHeader, CardTitle, Table, Td, Th } from "@/components/ui/primitives";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useAccountSummary, useOrders, usePositions, useTradingTasks } from "@/hooks/queries";
+import { useAccountSummary, useOrders, usePositions, useTradingMode, useTradingTasks } from "@/hooks/queries";
 import { between, dateTime, duration, money, signedMoney } from "@/lib/format";
 import { api } from "@/services/api";
 import { t } from "@/lib/i18n";
@@ -35,6 +35,10 @@ export function TradingPage() {
   const openOrders = useOrders(connected, "open", 100);
   const closedOrders = useOrders(connected, "closed", 100);
   const tasks = useTradingTasks();
+  const { data: tradingMode } = useTradingMode();
+  const live = tradingMode?.mode === "live";
+  const canLiquidate = connected && !!tradingMode && account.paper === !live &&
+    (!live || tradingMode.live_available);
   const [confirmEmergency, setConfirmEmergency] = React.useState(false);
   const [confirmLiquidate, setConfirmLiquidate] = React.useState(false);
 
@@ -64,22 +68,25 @@ export function TradingPage() {
     <>
       <PageHeader
         title={t("Trading")}
-        description={t("Paper trading on your Alpaca account.")}
+        description={t("Strategy trading on your Alpaca account.")}
         actions={
           <>
             <Button variant="outline" disabled={activeTasks.length === 0} onClick={() => setConfirmEmergency(true)}>
               <OctagonX /> {t("Emergency stop all")} </Button>
-            <Button variant="destructive" disabled={!connected} onClick={() => setConfirmLiquidate(true)}>
+            <Button variant="destructive" disabled={!canLiquidate} onClick={() => setConfirmLiquidate(true)}>
               <Flame /> {t("Liquidate account")} </Button>
           </>
         }
       />
 
-      <Alert tone="info" className="mb-4">
-        <Lock />
-        <div>
-          <b>{t("Mode: Paper.")}</b> {t("Live trading is not available in this release. The server refuses live orders regardless of what the browser sends.")} </div>
-      </Alert>
+      {live && (
+        <Alert tone={tradingMode.live_available ? "warning" : "info"} className="mb-4">
+          <Lock />
+          <div><b>{t("Live account")}</b> · {t(tradingMode.live_available
+            ? "Orders affect real positions and funds."
+            : "Live trading is disabled on this server.")}</div>
+        </Alert>
+      )}
 
       {summary.isLoading ? (
         <LoadingState rows={2} />
@@ -113,7 +120,7 @@ export function TradingPage() {
           <QueryBoundary query={tasks}>
             {(list) =>
               list.length === 0 ? (
-                <EmptyState title={t("No paper runs yet")} description={t("Start a strategy from the Strategies page.")}
+                <EmptyState title={t("No trading runs yet")} description={t("Start a strategy from the Strategies page.")}
                   action={<Button asChild variant="outline"><Link to="/strategies">{t("Strategies")}</Link></Button>} />
               ) : (
                 <Table>
@@ -188,7 +195,7 @@ export function TradingPage() {
         description={t("Cancels all open orders and submits market orders to close EVERY position in this Alpaca account, including positions opened outside LumiBot UI. Running strategies are not stopped and may open new positions.")}
         confirmLabel={t("Liquidate")}
         destructive
-        phrase="LIQUIDATE"
+        phrase={live ? "LIQUIDATE LIVE" : "LIQUIDATE"}
         loading={liquidate.isPending}
         onConfirm={(typed) => liquidate.mutate(typed)}
       >

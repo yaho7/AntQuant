@@ -1,4 +1,4 @@
-"""Run one LumiBot strategy against an Alpaca paper account.
+"""Run one LumiBot strategy against an Alpaca account.
 
 Usage: python -m backend.workers.trading_worker <task_work_dir>
 
@@ -161,11 +161,12 @@ def make_managed_strategy(cls: type, work_dir: Path) -> type:
 
 def run(work_dir: Path) -> None:
     spec = setup_worker(work_dir)
-    if spec.get("mode") != "paper":
-        raise RuntimeError("Only paper trading is available in this release.")
-    config = alpaca_config(paper=True)
+    config = alpaca_config()
     if config is None:
         raise RuntimeError("Alpaca keys are not configured; set them in Settings.")
+    mode = "paper" if config["PAPER"] else "live"
+    if spec.get("mode") != mode:
+        raise RuntimeError("Trading mode must match the connected Alpaca account.")
 
     from lumibot.brokers import Alpaca
     from lumibot.traders import Trader
@@ -187,7 +188,7 @@ def run(work_dir: Path) -> None:
         trader.stop_all()
 
     signal.signal(signal.SIGTERM, _graceful)
-    log.info("Starting paper trading %s (%s)", spec["task_id"], spec["class_name"])
+    log.info("Starting %s trading %s (%s)", mode, spec["task_id"], spec["class_name"])
     started = time.monotonic()
     trader.run_all()
     log.info("Trader exited after %.0fs", time.monotonic() - started)

@@ -12,7 +12,7 @@ export function ConnectBrokerPrompt() {
     <EmptyState
       icon={PlugZap}
       title={t("No broker account connected")}
-      description={t("Account data comes straight from your broker. Add Alpaca paper keys in Settings to see equity, positions and orders here.")}
+      description={t("Account data comes straight from your broker. Add Alpaca keys in Settings to see equity, positions and orders here.")}
       action={
         <Button asChild>
           <Link to="/settings">{t("Connect Alpaca")}</Link>

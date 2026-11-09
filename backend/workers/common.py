@@ -16,6 +16,7 @@ from backend.core.logging import LOG_FORMAT, RedactingFilter, redact, register_s
 
 ALPACA_KEY_ENV = "LUMIBOT_UI_ALPACA_API_KEY"
 ALPACA_SECRET_ENV = "LUMIBOT_UI_ALPACA_API_SECRET"  # noqa: S105 - env var name, not a secret
+ALPACA_MODE_ENV = "LUMIBOT_UI_ALPACA_MODE"
 
 
 class _RedactingStream(io.TextIOBase):
@@ -57,12 +58,16 @@ def setup_worker(work_dir: Path) -> dict[str, Any]:
     return json.loads((work_dir / "spec.json").read_text())
 
 
-def alpaca_config(paper: bool = True) -> dict[str, Any] | None:
+def alpaca_config() -> dict[str, Any] | None:
     key = os.environ.get(ALPACA_KEY_ENV)
     secret = os.environ.get(ALPACA_SECRET_ENV)
     if not key or not secret:
         return None
-    return {"API_KEY": key, "API_SECRET": secret, "PAPER": paper}
+    return {
+        "API_KEY": key,
+        "API_SECRET": secret,
+        "PAPER": os.environ.get(ALPACA_MODE_ENV) != "live",
+    }
 
 
 def load_strategy_class(path: str, class_name: str) -> type:

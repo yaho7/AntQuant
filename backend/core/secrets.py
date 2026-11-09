@@ -12,6 +12,7 @@ import os
 from pathlib import Path
 
 from cryptography.fernet import Fernet, InvalidToken
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from backend.core.config import get_settings
@@ -43,36 +44,29 @@ def reset_cache() -> None:
     _fernet = None
 
 
-def set_secret(db: Session, name: str, value: str, *, commit: bool = True) -> None:
+def set_secret(db: Session, name: str, value: str) -> None:
     token = fernet().encrypt(value.encode()).decode()
     row = db.get(Secret, name)
     if row is None:
         db.add(Secret(name=name, ciphertext=token))
     else:
         row.ciphertext = token
-    if commit:
-        db.commit()
 
 
-def get_secret(db: Session, name: str) -> str | None:
-    row = db.get(Secret, name)
-    if row is None:
-        return None
-    try:
-        return fernet().decrypt(row.ciphertext.encode()).decode()
-    except InvalidToken:
-        return None
+def get_secrets(db: Session, *names: str) -> dict[str, str]:
+    values = {}
+    for name, ciphertext in db.execute(
+        select(Secret.name, Secret.ciphertext).where(Secret.name.in_(names))
+    ):
+        try:
+            values[name] = fernet().decrypt(ciphertext.encode()).decode()
+        except InvalidToken:
+            continue
+    return values
 
 
-def has_secret(db: Session, name: str) -> bool:
-    return db.get(Secret, name) is not None
-
-
-def delete_secret(db: Session, name: str) -> None:
-    row = db.get(Secret, name)
-    if row is not None:
-        db.delete(row)
-        db.commit()
+def delete_secrets(db: Session, *names: str) -> None:
+    db.execute(delete(Secret).where(Secret.name.in_(names)))
 
 
 def mask(value: str | None) -> str | None:

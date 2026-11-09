@@ -11,7 +11,6 @@ from sqlalchemy.orm import Session
 from backend.api.deps import client_ip, get_db, require_session, settings_dep
 from backend.core.audit import audit
 from backend.core.config import Settings
-from backend.core.secrets import set_secret
 from backend.core.security import (
     SESSION_COOKIE,
     create_session,
@@ -24,7 +23,6 @@ from backend.core.security import (
 from backend.models import AdminUser, UserSession
 from backend.schemas import LoginRequest, PasswordChange, SetupRequest
 from backend.services import broker_service
-from backend.services.settings_store import ALPACA_KEY, ALPACA_SECRET
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -102,8 +100,9 @@ def setup(
     db.add(user)
     db.flush()
     if body.alpaca_api_key and body.alpaca_api_secret:
-        set_secret(db, ALPACA_KEY, body.alpaca_api_key.strip(), commit=False)
-        set_secret(db, ALPACA_SECRET, body.alpaca_api_secret.strip(), commit=False)
+        broker_service.save_alpaca_credentials(
+            db, body.alpaca_api_key, body.alpaca_api_secret, body.alpaca_paper
+        )
     token = create_session(
         db, user, settings.session_hours, request.headers.get("user-agent", ""), commit=False
     )

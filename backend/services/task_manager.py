@@ -1,4 +1,4 @@
-"""Runs backtests and paper-trading strategies as child processes.
+"""Runs backtests and trading strategies as child processes.
 
 * Every task gets a work dir `data/tasks/<id>/` holding `spec.json`, `task.log`
   and the worker's output files.
@@ -27,14 +27,15 @@ from pathlib import Path
 from typing import Any
 
 import psutil
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.orm import Session, sessionmaker
 
 from backend.core.config import PROJECT_ROOT, Settings
 from backend.core.logging import redact
 from backend.models import BacktestResult, Strategy, SystemEvent, Task
+from backend.services.broker_service import AlpacaConnection
 from backend.services.settings_store import get_setting
-from backend.workers.common import ALPACA_KEY_ENV, ALPACA_SECRET_ENV
+from backend.workers.common import ALPACA_KEY_ENV, ALPACA_MODE_ENV, ALPACA_SECRET_ENV
 
 log = logging.getLogger("task_manager")
 
@@ -99,7 +100,7 @@ class TaskManager:
         self,
         settings: Settings,
         session_factory: sessionmaker[Session],
-        credentials: Callable[[Session], tuple[str, str] | None],
+        credentials: Callable[[Session], AlpacaConnection | None],
         python: str = sys.executable,
         poll_seconds: float = 2.0,
     ) -> None:
@@ -208,11 +209,16 @@ class TaskManager:
         return task
 
     def start_trading(self, db: Session, strategy: Strategy, mode: str) -> Task:
-        if mode != "paper":
-            raise TaskError("Only paper trading is available in this release.", 403)
-        if self.credentials(db) is None:
-            raise TaskError("Connect an Alpaca paper account in Settings first.", 400)
+        if mode == "live" and not self.settings.live_trading_enabled:
+            raise TaskError("Live trading is disabled on this server.", 403)
         with self._lock:
+            # Serialize credential changes with the creation of an active trading task.
+            db.execute(text("BEGIN IMMEDIATE"))
+            creds = self.credentials(db)
+            if creds is None:
+                raise TaskError("Connect an Alpaca account in Settings first.", 400)
+            if mode != ("paper" if creds.paper else "live"):
+                raise TaskError("Trading mode must match the connected Alpaca account.", 409)
             active = db.scalar(
                 select(Task).where(
                     Task.kind == "trading",
@@ -224,7 +230,7 @@ class TaskManager:
                 raise TaskError("This strategy is already running.", 409)
             config = {"parameters": strategy.parameters}
             task = self._new_task(db, strategy, "trading", mode, config)
-            self._launch(db, task, strategy)
+            self._launch(db, task, strategy, creds)
         return task
 
     # ------------------------------------------------------------ control
@@ -287,7 +293,9 @@ class TaskManager:
             except (ProcessLookupError, PermissionError):
                 pass
 
-    def _launch(self, db: Session, task: Task, strategy: Strategy) -> None:
+    def _launch(
+        self, db: Session, task: Task, strategy: Strategy, creds: AlpacaConnection | None = None
+    ) -> None:
         from backend.services.strategy_service import StrategyError, resolve_source
 
         work_dir = Path(task.work_dir)
@@ -313,9 +321,12 @@ class TaskManager:
         }
         env["PYTHONPATH"] = str(PROJECT_ROOT)
         env["PYTHONUNBUFFERED"] = "1"
-        creds = self.credentials(db)
+        if task.kind == "backtest":
+            creds = self.credentials(db)
         if creds:
-            env[ALPACA_KEY_ENV], env[ALPACA_SECRET_ENV] = creds
+            env[ALPACA_KEY_ENV] = creds.key
+            env[ALPACA_SECRET_ENV] = creds.secret
+            env[ALPACA_MODE_ENV] = "paper" if creds.paper else "live"
         log_file = open(task.log_path, "ab")  # noqa: SIM115 - handed to the child
         try:
             proc = subprocess.Popen(

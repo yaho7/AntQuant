@@ -180,7 +180,7 @@ export function StrategiesPage() {
                     <Th>{t("Name")}</Th>
                     <Th>{t("Class")}</Th>
                     <Th>{t("Version")}</Th>
-                    <Th>{t("Paper trading")}</Th>
+                    <Th>{t("Trading")}</Th>
                     <Th>{t("Updated")}</Th>
                     <Th className="text-right">{t("Actions")}</Th>
                   </tr>

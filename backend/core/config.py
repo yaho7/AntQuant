@@ -26,8 +26,7 @@ class Settings(BaseSettings):
     cookie_secure: bool = False
     session_hours: int = 24 * 7
 
-    # Live trading is not available in this release; the backend refuses it.
-    # The flag exists so the check is centralised and auditable.
+    # Allow order submission when connected to a live Alpaca account.
     live_trading_enabled: bool = False
 
     github_repo: str = "yaho7/lumibot-ui"

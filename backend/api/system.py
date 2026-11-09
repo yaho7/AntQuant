@@ -10,7 +10,7 @@ from typing import Any
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
 from backend import __version__
@@ -25,11 +25,11 @@ from backend.api.deps import client_ip, get_db, require_session, settings_dep
 from backend.api.serializers import _iso, task_out
 from backend.core.audit import audit
 from backend.core.config import Settings
-from backend.core.secrets import delete_secret, get_secret, has_secret, mask, set_secret
+from backend.core.secrets import mask
 from backend.models import AuditLog, SystemEvent, Task
 from backend.schemas import AlpacaCredentials, BacktestDefaults, SettingUpdate
 from backend.services import broker_service
-from backend.services.settings_store import ALPACA_KEY, ALPACA_SECRET, all_settings, set_setting
+from backend.services.settings_store import all_settings, set_setting
 from backend.services.task_manager import ACTIVE
 
 router = APIRouter(prefix="/api", tags=["system"], dependencies=[Depends(require_session)])
@@ -46,11 +46,11 @@ def health(db: Session = Depends(get_db)) -> dict[str, str]:
 
 
 def _alpaca_status(db: Session) -> dict[str, Any]:
-    key = get_secret(db, ALPACA_KEY)
+    creds = broker_service.alpaca_credentials(db)
     return {
-        "configured": bool(key) and has_secret(db, ALPACA_SECRET),
-        "api_key_hint": mask(key),
-        "paper": True,
+        "configured": creds is not None,
+        "api_key_hint": mask(creds.key) if creds else None,
+        "paper": creds.paper if creds else True,
     }
 
 
@@ -98,21 +98,29 @@ def put_alpaca(
     body: AlpacaCredentials, request: Request, db: Session = Depends(get_db)
 ) -> dict[str, Any]:
     """Write-only: the secret is encrypted at rest and never returned."""
-    set_secret(db, ALPACA_KEY, body.api_key.strip())
-    set_secret(db, ALPACA_SECRET, body.api_secret.strip())
+    db.execute(text("BEGIN IMMEDIATE"))
+    if db.scalar(select(Task.id).where(Task.kind == "trading", Task.status.in_(ACTIVE)).limit(1)):
+        raise HTTPException(409, "Stop all trading strategies before replacing the keys.")
+    broker_service.save_alpaca_credentials(db, body.api_key, body.api_secret, body.paper)
+    audit(
+        db,
+        "settings.alpaca_credentials",
+        "alpaca",
+        {"action": "set", "paper": body.paper},
+        client_ip(request),
+    )
     broker_service.reset_broker()
-    audit(db, "settings.alpaca_credentials", "alpaca", {"action": "set"}, client_ip(request))
     return _alpaca_status(db)
 
 
 @router.delete("/settings/alpaca/credentials")
 def delete_alpaca(request: Request, db: Session = Depends(get_db)) -> dict[str, Any]:
-    if db.scalar(select(Task.id).where(Task.kind == "trading", Task.status.in_(ACTIVE))):
+    db.execute(text("BEGIN IMMEDIATE"))
+    if db.scalar(select(Task.id).where(Task.kind == "trading", Task.status.in_(ACTIVE)).limit(1)):
         raise HTTPException(409, "Stop all trading strategies before removing the keys.")
-    delete_secret(db, ALPACA_KEY)
-    delete_secret(db, ALPACA_SECRET)
-    broker_service.reset_broker()
+    broker_service.remove_alpaca_credentials(db)
     audit(db, "settings.alpaca_credentials", "alpaca", {"action": "delete"}, client_ip(request))
+    broker_service.reset_broker()
     return _alpaca_status(db)
 
 
@@ -124,7 +132,7 @@ def test_alpaca(
 ) -> dict[str, Any]:
     """Test given keys (before saving) or the stored ones."""
     if body is not None:
-        adapter: Any = AlpacaAdapter(body.api_key, body.api_secret, paper=True)
+        adapter: Any = AlpacaAdapter(body.api_key, body.api_secret, paper=body.paper)
     else:
         adapter = broker_service.get_broker(db)
         if adapter is None:
@@ -180,7 +188,7 @@ def system_info(db: Session = Depends(get_db), settings: Settings = Depends(sett
         "disk_total_bytes": usage.total,
         "task_count": task_count,
         "uptime_seconds": int(time.time() - STARTED),
-        "live_trading_available": False,
+        "live_trading_available": settings.live_trading_enabled,
     }
 
 

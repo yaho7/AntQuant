@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 from pathlib import Path
+from types import SimpleNamespace
 
+import pytest
+from alpaca.trading.client import TradingClient
 from fastapi.testclient import TestClient
 
 from backend.adapters.brokers.mock import MockBroker
@@ -54,6 +57,57 @@ def test_account_with_mock_broker(authed: TestClient) -> None:
     assert summary["account"]["daily_pnl"] == 10.0
     assert authed.get("/api/account/positions").json()[0]["symbol"] == "AAA"
     assert len(authed.get("/api/account/history").json()) == 2
+
+
+def test_alpaca_connection_uses_selected_endpoint(
+    authed: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    endpoints = []
+
+    def fake_get_account(client: TradingClient) -> SimpleNamespace:
+        endpoints.append(client._base_url)
+        return SimpleNamespace(
+            account_number="mock-account",
+            status="ACTIVE",
+            currency="USD",
+            equity="1000",
+            cash="100",
+            buying_power="100",
+            last_equity="1000",
+            long_market_value="900",
+            short_market_value="0",
+            trading_blocked=False,
+            account_blocked=False,
+        )
+
+    monkeypatch.setattr(TradingClient, "get_account", fake_get_account)
+    for paper in (True, False):
+        body = {"api_key": KEY, "api_secret": SECRET, "paper": paper}
+        test = authed.post("/api/settings/alpaca/test", json=body)
+        assert test.json()["paper"] is paper
+        saved = authed.put("/api/settings/alpaca/credentials", json=body)
+        assert saved.json()["paper"] is paper
+        summary = authed.get("/api/account/summary")
+        assert summary.json()["account"]["paper"] is paper
+    assert (
+        endpoints == ["https://paper-api.alpaca.markets"] * 2 + ["https://api.alpaca.markets"] * 2
+    )
+    assert (
+        authed.post("/api/trading/liquidate", json={"confirm": "LIQUIDATE LIVE"}).status_code == 403
+    )
+
+    from backend.core.config import get_settings
+
+    get_settings().live_trading_enabled = True
+    broker = MockBroker()
+    broker.paper = False
+    set_broker_override(broker)
+    assert authed.post("/api/trading/liquidate", json={"confirm": "LIQUIDATE"}).status_code == 400
+    assert not broker.closed
+    assert (
+        authed.post("/api/trading/liquidate", json={"confirm": "LIQUIDATE LIVE"}).status_code == 200
+    )
+    assert broker.closed
 
 
 def test_liquidate_needs_phrase(authed: TestClient) -> None:

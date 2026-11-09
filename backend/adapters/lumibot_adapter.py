@@ -55,7 +55,7 @@ DATA_SOURCES: dict[str, DataSourceInfo] = {
         label="Alpaca Market Data",
         lumibot_class="AlpacaBacktesting",
         requires_alpaca_keys=True,
-        note="Uses your Alpaca paper keys. Free plans have limited history.",
+        note="Uses your Alpaca keys. Free plans have limited history.",
     ),
 }
 

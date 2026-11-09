@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, KeyRound, RefreshCw, Trash2, XCircle } from "lucide-react";
 import * as React from "react";
 import { AlpacaKeysForm } from "@/components/AlpacaKeysForm";
-import { ConfirmDialog, PageHeader, QueryBoundary } from "@/components/common";
+import { ConfirmDialog, ModeBadge, PageHeader, QueryBoundary } from "@/components/common";
 import { useToast } from "@/components/toast";
 import { Button } from "@/components/ui/button";
 import { Alert, Badge, Card, CardContent, CardHeader, CardTitle, Field, Input, Select, Table, Td, Th } from "@/components/ui/primitives";
@@ -35,16 +35,22 @@ function BrokerCard({ view }: { view: SettingsView }) {
       <CardHeader>
         <div>
           <CardTitle>{t("Alpaca connection")}</CardTitle>
-          <p className="mt-1 text-xs text-muted-foreground">{t("Paper account only. Keys are encrypted at rest and never sent back to the browser.")}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{t("Connect a paper or live account. Keys are encrypted at rest.")}</p>
         </div>
         {a.configured ? <Badge tone="gain"><CheckCircle2 /> {t("Configured")}</Badge> : <Badge><XCircle /> {t("Not configured")}</Badge>}
       </CardHeader>
       <CardContent className="grid gap-3">
         {a.configured && !replace ? (
           <>
-            <p className="text-sm">{t("Key ID")} <span className="font-mono">{a.api_key_hint}</span> {t("· Paper")}</p>
+            <p className="flex items-center gap-2 text-sm">{t("Key ID")} <span className="font-mono">{a.api_key_hint}</span> <ModeBadge mode={a.paper ? "paper" : "live"} /></p>
             {test.data && (test.data.ok ? (
-              <Alert tone="info"><CheckCircle2 className="text-gain" /> Connected to {test.data.account_id} ({test.data.status}).</Alert>
+              <Alert tone="info"><CheckCircle2 className="text-gain" />
+                {t("Connected to {mode} · {account} ({status}).", {
+                  mode: t(a.paper ? "Paper account" : "Live account"),
+                  account: test.data.account_id ?? "",
+                  status: test.data.status ?? "",
+                })}
+              </Alert>
             ) : (
               <Alert tone="loss">{test.data.error}</Alert>
             ))}
@@ -56,7 +62,11 @@ function BrokerCard({ view }: { view: SettingsView }) {
           </>
         ) : (
           <>
-            <AlpacaKeysForm onSaved={() => { setReplace(false); toast.success("Alpaca keys saved"); }} />
+            <AlpacaKeysForm initialPaper={a.paper} onSaved={() => {
+              test.reset();
+              setReplace(false);
+              toast.success("Alpaca keys saved");
+            }} />
             {replace && <Button variant="ghost" size="sm" onClick={() => setReplace(false)}>{t("Cancel")}</Button>}
           </>
         )}

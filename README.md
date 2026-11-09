@@ -1,7 +1,7 @@
 # LumiBot UI
 
 A self-hosted web interface for the [LumiBot](https://github.com/Lumiwealth/lumibot) trading
-framework: manage strategies, run backtests, paper-trade on Alpaca and watch logs from one
+framework: manage strategies, run backtests, trade on Alpaca and watch logs from one
 browser tab. Free, open source (MIT), one Docker container, no `.env` file needed.
 
 LumiBot UI does not fork or patch LumiBot. It installs a pinned LumiBot release and calls its
@@ -12,12 +12,14 @@ public Python API from separate worker processes.
 | Dashboard | Real Alpaca account: equity, cash, buying power, daily and period P&L, equity curve, allocation, holdings, recent trades, running tasks, system status |
 | Strategies | Register bundled or uploaded strategy classes, edit name/description/parameters, version history with restore, read-only code view, per-strategy backtests and fills |
 | Backtesting | Real LumiBot backtests (Yahoo or Alpaca data) in a subprocess, progress, timeout, queue, metrics, equity and drawdown charts, trade list, CSV export, LumiBot tearsheet files |
-| Trading | Alpaca **paper** trading: start, pause, resume, stop, emergency stop, account liquidation with typed confirmation |
+| Trading | Alpaca paper and opt-in live trading, with start, pause, resume, stop, emergency stop and account liquidation |
 | Logs | System, API error, audit and per-task logs with level filter, search, auto-refresh and download |
 | Settings | Alpaca keys (write-only, encrypted), backtest defaults, timeouts, password, versions, LumiBot compatibility check, update check, audit log |
 
-Live trading is **not** available in this release. The server refuses it whatever the browser
-sends.
+Choose **Paper account** or **Live account** when entering your Alpaca keys. Both modes
+support account data and backtests. To allow real orders, set
+`LUMIBOT_UI_LIVE_TRADING_ENABLED=true` in the server environment (under `environment`
+for the Compose service) and recreate the container.
 
 ## Quick start (Docker)
 
@@ -45,7 +47,7 @@ docker compose up -d
 ```
 
 Open <http://127.0.0.1:8000>, choose your language and create the administrator account.
-You can then connect your Alpaca **paper** account or skip that step.
+You can then connect a paper or live Alpaca account or skip that step.
 
 The port is bound to `127.0.0.1` on purpose. To reach it from other devices, put a reverse
 proxy in front of it (see below) instead of opening the port.
@@ -147,7 +149,7 @@ Browser ──HTTPS──> FastAPI (auth, CSRF, REST) ──> services ──> S
   LumiBot's API. `python -m backend.workers.compat` checks every LumiBot call the project uses.
 * Each run gets `data/tasks/<id>/` with its spec, log, LumiBot output and result. Closing the
   browser does not stop it. On restart, runs left behind are re-attached if their process is
-  still alive, otherwise marked failed. Paper trading is never resumed automatically.
+  still alive, otherwise marked failed. The server does not start replacement trading processes.
 * Parameters reach workers through a JSON file, never through the command line.
 
 ### Pause, Stop and Liquidate
@@ -157,7 +159,7 @@ Browser ──HTTPS──> FastAPI (auth, CSRF, REST) ──> services ──> S
 | Pause | Orders that would open or grow a position are rejected and logged. Exits, reductions and broker-side stops still work. | Kept |
 | Stop | The strategy process is signalled and exits (killed after 30 s if it hangs). | Kept |
 | Emergency stop | Stop for every running strategy at once. | Kept |
-| Liquidate | Cancels open orders and closes **all** positions in the Alpaca account. Requires typing `LIQUIDATE`. | Closed |
+| Liquidate | Cancels open orders and closes **all** positions in the Alpaca account. Requires `LIQUIDATE` for paper or `LIQUIDATE LIVE` for live. | Closed |
 
 ### Account vs. strategy results
 
@@ -183,7 +185,9 @@ trade) the value is shown as N/A with the reason.
   never returned by the API and masked in all logs and downloads.
 * No shell execution from the browser. File downloads and log sources resolve server-side
   names, never client paths.
-* Paper mode is hard-wired in the backend. Sensitive actions are written to the audit log.
+* The server matches the order mode to the connected account and requires a server-side
+  opt-in for live orders. Stop all trading strategies before changing credentials.
+  Sensitive actions are written to the audit log.
 * The container runs as UID 10001 and contains no secrets.
 
 ## Development
@@ -214,7 +218,7 @@ never reaches a published image.
 
 ## Known limitations
 
-* Live trading, multiple accounts and brokers other than Alpaca are not implemented.
+* One Alpaca account can be connected at a time.
 * Per-strategy P&L on a shared account is not attributed.
 * Pause only filters orders placed through `submit_order` / `submit_orders`; code that calls
   the broker object directly bypasses it.

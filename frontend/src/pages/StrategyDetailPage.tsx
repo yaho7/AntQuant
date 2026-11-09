@@ -57,7 +57,7 @@ function OverviewTab({ strategy }: { strategy: Strategy }) {
     <Card>
       <CardContent className="grid gap-4 pt-4">
         {running && (
-          <Alert tone="info">{t("Changes apply to the next run. The running paper strategy keeps the parameters it started with.")} </Alert>
+          <Alert tone="info">{t("Changes apply to the next run. The running strategy keeps the parameters it started with.")} </Alert>
         )}
         <div className="grid gap-4 md:grid-cols-2">
           <Field label={t("Name")} htmlFor="n"><Input id="n" value={name} onChange={(e) => setName(e.target.value)} /></Field>
@@ -119,7 +119,7 @@ function PerformanceTab({ strategyId }: { strategyId: number }) {
           <Card>
             <CardHeader>
               <div>
-                <CardTitle>{t("Paper fills by this strategy")}</CardTitle>
+                <CardTitle>{t("Fills by this strategy")}</CardTitle>
                 <p className="mt-1 text-xs text-muted-foreground">
                   Fills recorded by this strategy's own runs. Account equity is shared by all strategies on the
                   account, so per-strategy P&amp;L is not derived from it.
@@ -128,7 +128,7 @@ function PerformanceTab({ strategyId }: { strategyId: number }) {
             </CardHeader>
             <CardContent className="px-0">
               {data.fills.length === 0 ? (
-                <EmptyState title={t("No paper fills recorded")} />
+                <EmptyState title={t("No fills recorded")} />
               ) : (
                 <Table>
                   <thead><tr><Th>{t("Time")}</Th><Th>{t("Symbol")}</Th><Th>{t("Side")}</Th><Th className="text-right">{t("Qty")}</Th><Th className="text-right">{t("Price")}</Th></tr></thead>
@@ -276,7 +276,7 @@ export function StrategyDetailPage() {
             }
           />
           {trading?.error_message && trading.status === "failed" && (
-            <Alert tone="loss" className="mb-4">Last paper run failed: {trading.error_message}</Alert>
+            <Alert tone="loss" className="mb-4">{t("Last trading run failed: {error}", { error: trading.error_message })}</Alert>
           )}
           <Tabs defaultValue="overview">
             <TabsList>

@@ -13,6 +13,7 @@ import {
   EmptyState,
   ErrorState,
   LoadingState,
+  ModeBadge,
   PageHeader,
   StatCard,
   StatusBadge,
@@ -92,8 +93,8 @@ export function DashboardPage() {
       {account && (
         <section className="mb-10" aria-label={t("Account overview")}>
           <p className="mb-1 flex items-center gap-2 text-xs text-muted-foreground">
-            Alpaca {account.paper ? "paper" : "LIVE"} account · {account.account_id}
-            <Badge tone="info">{account.paper ? "Paper" : "LIVE"}</Badge>
+            Alpaca · {account.account_id}
+            <ModeBadge mode={account.paper ? "paper" : "live"} />
           </p>
           <h1 className="font-display sensitive text-5xl font-normal tracking-tight sm:text-6xl">
             {money(account.equity, account.currency)}
@@ -242,7 +243,7 @@ export function DashboardPage() {
                         <StatusBadge status={task.status} paused={task.paused} />
                       </div>
                       <span className="num text-xs text-muted-foreground">
-                        {task.kind === "backtest" ? t("Backtest") : t("Paper trading")} ·{" "}
+                        {t(task.kind === "backtest" ? "Backtest" : task.mode === "live" ? "Live trading" : "Paper trading")} ·{" "}
                         {duration(between(task.started_at, null))}
                         {task.progress != null && ` · ${task.progress.toFixed(0)}%`}
                       </span>
@@ -263,7 +264,7 @@ export function DashboardPage() {
                   <dt className="text-muted-foreground">{t("Broker")}</dt>
                   <dd className="flex items-center gap-1">
                     {status.data.broker.configured ? (
-                      <><CheckCircle2 className="size-3.5 text-gain" /> {t("Alpaca paper")}</>
+                      <><CheckCircle2 className="size-3.5 text-gain" /> Alpaca <ModeBadge mode={status.data.broker.paper ? "paper" : "live"} /></>
                     ) : (
                       <><CircleSlash className="size-3.5 text-muted-foreground" /> {t("Not connected")}</>
                     )}

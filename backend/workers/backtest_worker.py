@@ -66,7 +66,7 @@ def run(work_dir: Path) -> None:
     datasource_class = getattr(backtesting, source.lumibot_class)
     config = None
     if source.requires_alpaca_keys:
-        config = alpaca_config(paper=True)
+        config = alpaca_config()
         if config is None:
             raise RuntimeError("Alpaca keys are not configured; set them in Settings.")
 

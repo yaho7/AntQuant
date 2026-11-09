@@ -4,6 +4,7 @@ import * as React from "react";
 import { ConfirmDialog } from "@/components/common";
 import { useToast } from "@/components/toast";
 import { Button } from "@/components/ui/button";
+import { useTradingMode } from "@/hooks/queries";
 import { api } from "@/services/api";
 import type { Task } from "@/types/api";
 import { t } from "@/lib/i18n";
@@ -25,7 +26,11 @@ export function TradingControls({
 }) {
   const qc = useQueryClient();
   const toast = useToast();
+  const { data: tradingMode } = useTradingMode();
+  const [confirmLive, setConfirmLive] = React.useState(false);
   const [confirmStop, setConfirmStop] = React.useState(false);
+  const live = tradingMode?.mode === "live";
+  const canStart = brokerConnected && !!tradingMode && (!live || tradingMode.live_available);
   const active = !!task && ["pending", "starting", "running"].includes(task.status);
   const done = () => {
     void qc.invalidateQueries({ queryKey: ["strategies"] });
@@ -33,9 +38,11 @@ export function TradingControls({
     void qc.invalidateQueries({ queryKey: ["system"] });
   };
   const start = useMutation({
-    mutationFn: () => api.post<Task>("/api/trading/start", { strategy_id: strategyId, mode: "paper" }),
-    onSuccess: () => {
-      toast.success("Paper trading started");
+    mutationFn: (mode: "paper" | "live") =>
+      api.post<Task>("/api/trading/start", { strategy_id: strategyId, mode }),
+    onSuccess: (_task, mode) => {
+      setConfirmLive(false);
+      toast.success(mode === "live" ? "Live trading started" : "Paper trading started");
       done();
     },
     onError: toast.error,
@@ -61,14 +68,29 @@ export function TradingControls({
 
   if (!active) {
     return (
-      <Button
-        size={size}
-        onClick={() => start.mutate()}
-        loading={start.isPending}
-        disabled={!brokerConnected}
-        title={brokerConnected ? t("Start paper trading") : t("Connect Alpaca in Settings first")}
-      >
-        <Play /> {t("Start paper")} </Button>
+      <>
+        <Button
+          size={size}
+          onClick={() => live ? setConfirmLive(true) : start.mutate("paper")}
+          loading={start.isPending}
+          disabled={!canStart}
+          title={t(!brokerConnected ? "Connect Alpaca in Settings first" :
+            live && !canStart ? "Live trading is disabled on this server." :
+              live ? "Start live trading" : "Start paper trading")}
+        >
+          <Play /> {t(live ? "Start live" : "Start paper")}
+        </Button>
+        <ConfirmDialog
+          open={confirmLive}
+          onOpenChange={setConfirmLive}
+          title={t("Start live trading?")}
+          description={t("This strategy can place real orders using your live Alpaca account.")}
+          confirmLabel={t("Start live trading")}
+          destructive
+          loading={start.isPending}
+          onConfirm={() => start.mutate("live")}
+        />
+      </>
     );
   }
   return (

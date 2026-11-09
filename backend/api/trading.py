@@ -1,4 +1,4 @@
-"""Paper-trading control. Pause, Stop and Liquidate are separate actions."""
+"""Strategy trading control. Pause, Stop and Liquidate are separate actions."""
 
 from __future__ import annotations
 
@@ -17,12 +17,13 @@ from backend.core.audit import audit
 from backend.core.config import Settings
 from backend.models import Strategy, Task
 from backend.schemas import LiquidateRequest, TradingStart
-from backend.services.broker_service import get_broker
+from backend.services.broker_service import alpaca_credentials, get_broker
 from backend.services.task_manager import ACTIVE, TaskError, TaskManager
 
 router = APIRouter(prefix="/api/trading", tags=["trading"], dependencies=[Depends(require_session)])
 
 LIQUIDATE_PHRASE = "LIQUIDATE"
+LIVE_LIQUIDATE_PHRASE = "LIQUIDATE LIVE"
 
 
 def _trading_task(db: Session, task_id: str) -> Task:
@@ -41,12 +42,17 @@ def _heartbeat(task: Task) -> dict[str, Any] | None:
 
 
 @router.get("/mode")
-def mode(settings: Settings = Depends(settings_dep)) -> dict[str, Any]:
+def mode(
+    db: Session = Depends(get_db), settings: Settings = Depends(settings_dep)
+) -> dict[str, Any]:
+    creds = alpaca_credentials(db)
+    live = creds is not None and not creds.paper
     return {
-        "mode": "paper",
-        "live_available": False,
-        "live_note": "Live trading is not available in this release. Only Alpaca paper "
-        "accounts can be used.",
+        "mode": "live" if live else "paper",
+        "live_available": settings.live_trading_enabled,
+        "live_note": None
+        if settings.live_trading_enabled
+        else "Live trading is disabled on this server.",
         "live_flag": settings.live_trading_enabled,
     }
 
@@ -72,9 +78,9 @@ def start(
     settings: Settings = Depends(settings_dep),
 ) -> dict[str, Any]:
     ip = client_ip(request)
-    if body.mode == "live":
+    if body.mode == "live" and not settings.live_trading_enabled:
         audit(db, "trading.start_live_refused", str(body.strategy_id), {}, ip, success=False)
-        raise HTTPException(403, "Live trading is not available in this release.")
+        raise HTTPException(403, "Live trading is disabled on this server.")
     strategy = db.get(Strategy, body.strategy_id)
     if strategy is None or strategy.archived:
         raise HTTPException(404, "Strategy not found.")
@@ -145,16 +151,22 @@ def emergency_stop(
 
 @router.post("/liquidate")
 def liquidate(
-    body: LiquidateRequest, request: Request, db: Session = Depends(get_db)
+    body: LiquidateRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+    settings: Settings = Depends(settings_dep),
 ) -> dict[str, Any]:
     """Close ALL positions in the broker account. Requires typing the phrase."""
     ip = client_ip(request)
-    if body.confirm != LIQUIDATE_PHRASE:
-        audit(db, "account.liquidate", "account", {"reason": "bad phrase"}, ip, success=False)
-        raise HTTPException(400, f'Type "{LIQUIDATE_PHRASE}" to confirm.')
     broker = get_broker(db)
     if broker is None:
         raise HTTPException(409, "No broker account is connected.")
+    if not broker.paper and not settings.live_trading_enabled:
+        raise HTTPException(403, "Live trading is disabled on this server.")
+    phrase = LIQUIDATE_PHRASE if broker.paper else LIVE_LIQUIDATE_PHRASE
+    if body.confirm != phrase:
+        audit(db, "account.liquidate", "account", {"reason": "bad phrase"}, ip, success=False)
+        raise HTTPException(400, f'Type "{phrase}" to confirm.')
     try:
         results = broker.close_all_positions(cancel_orders=body.cancel_orders)
     except BrokerError as exc:

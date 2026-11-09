@@ -72,6 +72,12 @@ export const useSystemStatus = () =>
 export const useSettings = () =>
   useQuery({ queryKey: keys.settings, queryFn: () => api.get<SettingsView>("/api/settings") });
 
+export const useTradingMode = () =>
+  useQuery({
+    queryKey: ["trading", "mode"],
+    queryFn: () => api.get<{ mode: "paper" | "live"; live_available: boolean }>("/api/trading/mode"),
+  });
+
 export const useTradingTasks = () =>
   useQuery({
     queryKey: keys.trading,

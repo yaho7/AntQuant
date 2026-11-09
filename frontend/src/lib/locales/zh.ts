@@ -64,8 +64,7 @@ export const zh: Record<string, string> = {
   Welcome: "欢迎",
   "Administrator access to your trading workspace.": "交易工作台管理员登录。",
   "Step 1 of 2 · Create the administrator account.": "第 1 步，共 2 步 · 创建管理员账户。",
-  "Step 2 of 2 · Paper trading only. You can do this later in Settings.":
-    "第 2 步，共 2 步 · 仅限模拟交易，也可以稍后在设置中完成。",
+  "Step 2 of 2 · You can do this later in Settings.": "第 2 步，共 2 步 · 也可以稍后在设置中连接。",
   "Setup is already complete.": "初始化已完成。",
   Username: "用户名",
   Password: "密码",
@@ -74,8 +73,8 @@ export const zh: Record<string, string> = {
   "Passwords do not match.": "两次输入的密码不一致。",
   "Create account": "创建账户",
   "Connect Alpaca (optional)": "连接 Alpaca（可选）",
-  "Use keys from an Alpaca paper account. Keys are encrypted on the server and are never shown again in the browser.":
-    "请使用 Alpaca 模拟账户的密钥。密钥在服务器上加密保存，之后不会再显示在浏览器中。",
+  "Choose the account type that matches your API keys. Keys are encrypted on the server.":
+    "请选择与 API 密钥匹配的账户类型。密钥会在服务器上加密保存。",
   "Skip for now": "暂时跳过",
 
   // Alpaca keys
@@ -84,8 +83,13 @@ export const zh: Record<string, string> = {
   "Test connection": "测试连接",
   "Save keys": "保存密钥",
   "Alpaca connection": "Alpaca 连接",
-  "Paper account only. Keys are encrypted at rest and never sent back to the browser.":
-    "仅支持模拟账户。密钥加密存储，不会返回给浏览器。",
+  "Connect a paper or live account. Keys are encrypted at rest.": "可连接模拟或实盘账户。密钥加密存储。",
+  "Alpaca account type": "Alpaca 账户类型",
+  "Paper account": "模拟账户",
+  "Live account": "实盘账户",
+  "Connected to {mode} · {account} ({status}).": "已连接{mode} · {account}（{status}）。",
+  "Connection failed": "连接失败",
+  "Stop all trading strategies before replacing the keys.": "请先停止所有交易策略，再更换密钥。",
   Configured: "已配置",
   "Not configured": "未配置",
   "Key ID": "Key ID",
@@ -101,10 +105,9 @@ export const zh: Record<string, string> = {
   // Dashboard
   "Your broker account at a glance.": "券商账户一览。",
   "Account overview": "账户概览",
-  "Alpaca paper": "Alpaca 模拟",
   "No broker account connected": "未连接券商账户",
-  "Account data comes straight from your broker. Add Alpaca paper keys in Settings to see equity, positions and orders here.":
-    "账户数据直接来自券商。在设置中添加 Alpaca 模拟账户密钥后，这里会显示权益、持仓和订单。",
+  "Account data comes straight from your broker. Add Alpaca keys in Settings to see equity, positions and orders here.":
+    "账户数据直接来自券商。在设置中添加 Alpaca 密钥后，这里会显示权益、持仓和订单。",
   "Connect Alpaca": "连接 Alpaca",
   "Could not load the Alpaca account": "无法加载 Alpaca 账户",
   "Alpaca reports trading is blocked on this account.": "Alpaca 显示该账户已被禁止交易。",
@@ -164,6 +167,7 @@ export const zh: Record<string, string> = {
   Class: "类",
   Version: "版本",
   "Paper trading": "模拟交易",
+  "Live trading": "实盘交易",
   Updated: "更新时间",
   Actions: "操作",
   "Never run": "从未运行",
@@ -200,8 +204,8 @@ export const zh: Record<string, string> = {
     "策略将从列表中隐藏，历史、回测和日志都会保留。请先停止正在运行的任务。",
   "Strategy archived": "策略已归档",
   Source: "来源",
-  "Changes apply to the next run. The running paper strategy keeps the parameters it started with.":
-    "修改会在下次运行时生效。正在运行的模拟策略仍使用启动时的参数。",
+  "Changes apply to the next run. The running strategy keeps the parameters it started with.":
+    "修改会在下次运行时生效。正在运行的策略仍使用启动时的参数。",
   "Change note (optional)": "修改说明（可选）",
   "e.g. Faster SMA window": "例如：缩短 SMA 窗口",
   "Save new version": "保存为新版本",
@@ -212,15 +216,21 @@ export const zh: Record<string, string> = {
   "Code hash": "代码哈希",
   "Read-only. Edit the file in your strategy folder; the next version you save records the new hash.":
     "只读。请在策略目录中编辑文件，下次保存版本时会记录新的哈希。",
-  "Paper fills by this strategy": "该策略的模拟成交",
+  "Fills by this strategy": "该策略的成交",
   "Fills recorded by this strategy's own runs. Account equity is shared by all strategies on the account, so per-strategy P&L is not derived from it.":
     "这里是该策略自身运行记录的成交。账户权益由所有策略共享，因此不据此计算单策略盈亏。",
-  "No paper fills recorded": "没有模拟成交记录",
-  "Last paper run failed:": "上次模拟运行失败：",
+  "No fills recorded": "没有成交记录",
+  "Last trading run failed: {error}": "上次交易运行失败：{error}",
 
   // Trading controls
   "Start paper": "开始模拟",
   "Start paper trading": "开始模拟交易",
+  "Start live": "启动实盘",
+  "Start live trading": "开始实盘交易",
+  "Start live trading?": "开始实盘交易？",
+  "This strategy can place real orders using your live Alpaca account.": "该策略可以使用你的 Alpaca 实盘账户提交真实订单。",
+  "Live trading started": "实盘交易已启动",
+  "Trading mode must match the connected Alpaca account.": "交易模式必须与已连接的 Alpaca 账户匹配。",
   "Connect Alpaca in Settings first": "请先在设置中连接 Alpaca",
   "Paper trading started": "模拟交易已启动",
   Pause: "暂停",
@@ -308,18 +318,17 @@ export const zh: Record<string, string> = {
   "Start backtest": "开始回测",
 
   // Trading page
-  "Paper trading on your Alpaca account.": "在你的 Alpaca 账户上进行模拟交易。",
+  "Strategy trading on your Alpaca account.": "使用你的 Alpaca 账户运行交易策略。",
   "Emergency stop all": "全部紧急停止",
   "Liquidate account": "账户清仓",
-  "Mode: Paper.": "模式：模拟。",
-  "Live trading is not available in this release. The server refuses live orders regardless of what the browser sends.":
-    "此版本不提供实盘交易。无论浏览器发送什么，服务器都会拒绝实盘订单。",
+  "Live trading is disabled on this server.": "此服务器尚未启用实盘交易。",
+  "Orders affect real positions and funds.": "订单会影响真实持仓和资金。",
   Account: "账户",
   Equity: "权益",
   "Strategy runs": "策略运行",
   "Pause blocks orders that open or grow a position; exits still go through. Stop ends the process and keeps positions. Liquidate closes every position in the account.":
     "暂停会拦截开仓或加仓订单，平仓仍会执行。停止会结束进程并保留持仓。清仓会平掉账户里的所有持仓。",
-  "No paper runs yet": "还没有模拟运行",
+  "No trading runs yet": "还没有交易运行记录",
   "Start a strategy from the Strategies page.": "请在策略页面启动策略。",
   Mode: "模式",
   "Running for": "已运行",

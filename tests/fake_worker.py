@@ -8,6 +8,7 @@ Behaviour comes from spec.json:
 from __future__ import annotations
 
 import json
+import os
 import signal
 import sys
 import time
@@ -44,7 +45,9 @@ def main() -> int:
 
     signal.signal(signal.SIGINT, handler)
     signal.signal(signal.SIGTERM, handler)
-    (work_dir / "heartbeat.json").write_text(json.dumps({"time": "now"}))
+    (work_dir / "heartbeat.json").write_text(
+        json.dumps({"time": "now", "alpaca_mode": os.environ.get("LUMIBOT_UI_ALPACA_MODE")})
+    )
     while not stop["flag"]:
         time.sleep(0.05)
     print("fake worker stopped", flush=True)

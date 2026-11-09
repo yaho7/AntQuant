@@ -70,12 +70,12 @@ export function ConnectBrokerPage() {
   return (
     <Shell
       title={t("Connect Alpaca (optional)")}
-      subtitle={t("Step 2 of 2 · Paper trading only. You can do this later in Settings.")}
+      subtitle={t("Step 2 of 2 · You can do this later in Settings.")}
     >
       <div className="grid gap-4">
         <Alert tone="info">
           <KeyRound />
-          <div>{t("Use keys from an Alpaca paper account. Keys are encrypted on the server and are never shown again in the browser.")}</div>
+          <div>{t("Choose the account type that matches your API keys. Keys are encrypted on the server.")}</div>
         </Alert>
         <AlpacaKeysForm onSaved={finish} />
         <Button variant="ghost" onClick={finish}>{t("Skip for now")}</Button>

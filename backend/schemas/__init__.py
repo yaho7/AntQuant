@@ -13,6 +13,7 @@ class SetupRequest(BaseModel):
     password: str = Field(min_length=1, max_length=256)
     alpaca_api_key: str | None = Field(default=None, max_length=128)
     alpaca_api_secret: str | None = Field(default=None, max_length=256)
+    alpaca_paper: bool = True
 
 
 class LoginRequest(BaseModel):
@@ -28,6 +29,7 @@ class PasswordChange(BaseModel):
 class AlpacaCredentials(BaseModel):
     api_key: str = Field(min_length=8, max_length=128, pattern=r"^[A-Za-z0-9]+$")
     api_secret: str = Field(min_length=16, max_length=256, pattern=r"^[A-Za-z0-9/+=]+$")
+    paper: bool = True
 
 
 # Strategy parameters are JSON values passed to LumiBot as a dict. They never

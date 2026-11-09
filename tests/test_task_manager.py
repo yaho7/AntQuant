@@ -102,6 +102,27 @@ def test_trading_start_pause_stop(authed: TestClient, data_dir: Path) -> None:
     assert stopped[0]["error_message"] == "Stopped by user."
 
 
+def test_live_trading_requires_matching_mode_and_locks_credentials(authed: TestClient) -> None:
+    from backend.core.config import get_settings
+
+    get_settings().live_trading_enabled = True
+    strategy_id = make_strategy(authed)
+    body = {"api_key": "LIVETESTKEY1234", "api_secret": "secretsecretsecret12", "paper": False}
+    assert authed.put("/api/settings/alpaca/credentials", json=body).status_code == 200
+    assert authed.post("/api/trading/start", json={"strategy_id": strategy_id}).status_code == 409
+    started = authed.post("/api/trading/start", json={"strategy_id": strategy_id, "mode": "live"})
+    assert started.status_code == 200
+    task_id = started.json()["id"]
+    wait_for(authed, "/api/trading/tasks", lambda b: b[0]["status"] == "running")
+    task = authed.get("/api/trading/tasks").json()[0]
+    assert task["mode"] == task["heartbeat"]["alpaca_mode"] == "live"
+    assert authed.put("/api/settings/alpaca/credentials", json=body).status_code == 409
+    assert authed.delete("/api/settings/alpaca/credentials").status_code == 409
+    authed.post(f"/api/trading/{task_id}/stop", json={})
+    stopped = wait_for(authed, "/api/trading/tasks", lambda b: b[0]["status"] == "stopped")
+    assert stopped[0]["error_message"] == "Stopped by user."
+
+
 def test_restart_marks_lost_tasks(data_dir: Path, fake_workers: None) -> None:
     from backend.core.config import get_settings
     from backend.core.db import init_engine, run_migrations, session_factory
