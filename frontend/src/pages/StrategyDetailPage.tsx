@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Archive, FlaskConical, History, Pencil, ScanLine, ScrollText, ShieldAlert } from "lucide-react";
+import { Archive, FlaskConical, History, Pencil, ScrollText } from "lucide-react";
 import * as React from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
@@ -12,16 +12,18 @@ import {
   StatusBadge,
 } from "@/components/common";
 import { ParamsEditor } from "@/components/ParamsEditor";
-import { mergeScannedParameters, scanStrategyCode, StrategyCodeEditor, StrategyCodeGuide } from "@/components/StrategyCode";
+import type { LineFocus } from "@/components/PythonEditor";
+import { StrategyCodeEditor } from "@/components/StrategyCode";
+import { CodeChecks, FixDialog, Step, TrialPanel, TrustCheck, useStrategyDraft } from "@/components/StrategyChecks";
 import { TradingControls } from "@/components/TradingControls";
 import { useToast } from "@/components/toast";
 import { Button } from "@/components/ui/button";
-import { Alert, Badge, Card, CardContent, CardHeader, CardTitle, Field, Input, Select, Table, Td, Textarea, Th } from "@/components/ui/primitives";
+import { Alert, Badge, Card, CardContent, CardHeader, CardTitle, Field, Input, Table, Td, Textarea, Th } from "@/components/ui/primitives";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useProfiles, useStrategies, useTradingTasks } from "@/hooks/queries";
 import { dateTime, money, num, pct } from "@/lib/format";
 import { api, qs } from "@/services/api";
-import type { Backtest, DiscoveredStrategy, Fill, Params, Strategy, StrategySource, StrategyVersion } from "@/types/api";
+import type { Backtest, CodeFix, Fill, Params, Strategy, StrategySource, StrategyVersion } from "@/types/api";
 import { t } from "@/lib/i18n";
 import { profileLabel, taskProfileLabel } from "@/lib/profiles";
 
@@ -228,6 +230,85 @@ function VersionsTab({ strategyId }: { strategyId: number }) {
   );
 }
 
+function savedCode(qc: ReturnType<typeof useQueryClient>, strategyId: number) {
+  return async (saved: Strategy) => {
+    qc.setQueryData(["strategy", strategyId], saved);
+    await qc.invalidateQueries({ queryKey: ["strategy", strategyId, "source"] });
+    void qc.invalidateQueries({ queryKey: ["strategy", strategyId, "versions"] });
+    void qc.invalidateQueries({ queryKey: ["strategies"] });
+  };
+}
+
+/** Editing uploaded code: the same check, fix and trial steps as adding a strategy. */
+function CodeEditor({ strategy, source, onClose }: { strategy: Strategy; source: StrategySource; onClose: () => void }) {
+  const qc = useQueryClient();
+  const toast = useToast();
+  const filename = source.source_path.split("/").pop() ?? "strategy.py";
+  const [code, setCode] = React.useState(source.code);
+  const [version] = React.useState(source.version);
+  const [focus, setFocus] = React.useState<LineFocus | null>(null);
+  const [fix, setFix] = React.useState<CodeFix | null>(null);
+  const [discarding, setDiscarding] = React.useState(false);
+  const draft = useStrategyDraft(code, filename, { className: strategy.class_name, parameters: strategy.parameters });
+  const goTo = (line: number) => setFocus({ line, nonce: Date.now() });
+  const save = useMutation({
+    mutationFn: () => api.put<Strategy>(`/api/strategies/${strategy.id}/source`, {
+      code, filename, class_name: draft.picked, parameters: draft.params,
+      expected_version: version, acknowledge_risk: draft.ack,
+    }),
+    onSuccess: async (saved) => {
+      await savedCode(qc, strategy.id)(saved);
+      onClose();
+      toast.success(t("Saved as version {v}", { v: saved.version }));
+    },
+    onError: (error) => {
+      toast.error(error);
+      void qc.invalidateQueries({ queryKey: ["strategy", strategy.id] });
+    },
+  });
+  const busy = save.isPending || draft.trial.isPending;
+  const outdated = source.version !== version;
+
+  return (
+    <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_22rem]">
+      <div className="grid min-w-0 content-start gap-3">
+        <StrategyCodeEditor code={code} label={t("Python strategy code")} focusLine={focus} minHeight="20rem"
+          onChange={busy ? undefined : setCode} />
+        {outdated && <Alert tone="warning">{t("This strategy was updated. Reload it before saving.")}</Alert>}
+      </div>
+      <div className="grid content-start gap-5">
+        <Step n={1} title={t("Check")} busy={draft.scan.pending && !!draft.scan.result}>
+          <CodeChecks draft={draft} onLine={goTo} onFix={setFix} />
+        </Step>
+        {draft.item && (
+          <>
+            <Step n={2} title={t("Parameters")}>
+              <ParamsEditor key={draft.revision} id="code-params" value={draft.params} onChange={draft.setParams} />
+            </Step>
+            <Step n={3} title={t("Trial run")}>
+              <TrustCheck draft={draft} disabled={busy} />
+              <TrialPanel draft={draft} onLine={goTo} disabled={busy} />
+            </Step>
+          </>
+        )}
+        <div className="flex flex-wrap justify-end gap-2">
+          <Button variant="outline" disabled={busy} onClick={() => {
+            if (code !== source.code) setDiscarding(true);
+            else onClose();
+          }}>{t("Cancel")}</Button>
+          <Button loading={save.isPending} onClick={() => save.mutate()}
+            disabled={!draft.ready || !draft.ack || draft.trial.isPending || outdated}>{t("Save new version")}</Button>
+        </div>
+      </div>
+      <FixDialog fix={fix} onOpenChange={(open) => { if (!open) setFix(null); }}
+        onApply={(fixed) => { setCode(fixed); setFix(null); }} />
+      <ConfirmDialog open={discarding} onOpenChange={setDiscarding} title={t("Discard code edits?")}
+        description={t("The editor will reopen with the last saved code.")}
+        confirmLabel={t("Discard changes")} destructive onConfirm={() => { setDiscarding(false); onClose(); }} />
+    </div>
+  );
+}
+
 function CodeTab({ strategy }: { strategy: Strategy }) {
   const qc = useQueryClient();
   const toast = useToast();
@@ -236,48 +317,11 @@ function CodeTab({ strategy }: { strategy: Strategy }) {
     queryKey: ["strategy", strategy.id, "source"],
     queryFn: () => api.get<StrategySource>(`${path}/source`),
   });
-  const [draft, setDraft] = React.useState<{ code: string; original: string; version: number } | null>(null);
-  const [picked, setPicked] = React.useState("");
-  const [params, setParams] = React.useState<Params>({});
-  const [paramsError, setParamsError] = React.useState<string | null>(null);
-  const [formRevision, setFormRevision] = React.useState(0);
-  const [ack, setAck] = React.useState(false);
-  const [discarding, setDiscarding] = React.useState(false);
-  const filename = source.data?.source_path.split("/").pop() ?? "strategy.py";
-
-  function selectClass(item: DiscoveredStrategy) {
-    const previous = item.class_name === picked ? params : item.class_name === strategy.class_name ? strategy.parameters : {};
-    setPicked(item.class_name);
-    setParams(mergeScannedParameters(item, previous));
-    setParamsError(null);
-    setFormRevision((value) => value + 1);
-  }
-
-  const scan = useMutation({
-    mutationFn: async (code: string) => ({ code, classes: await scanStrategyCode(code, filename) }),
-    onSuccess: ({ classes }) => {
-      const item = classes.find((entry) => entry.class_name === picked)
-        ?? classes.find((entry) => entry.class_name === strategy.class_name)
-        ?? (classes.length === 1 ? classes[0] : undefined);
-      if (item) selectClass(item);
-      else setPicked("");
-    },
-  });
-
-  const save = useMutation({
-    mutationFn: (edit: typeof draft) => edit
-      ? api.put<Strategy>(`${path}/source`, {
-        code: edit.code, filename, class_name: picked, parameters: params,
-        expected_version: edit.version, acknowledge_risk: ack,
-      })
-      : api.patch<Strategy>(path, { expected_version: source.data!.version }),
+  const [editing, setEditing] = React.useState(false);
+  const saveFile = useMutation({
+    mutationFn: () => api.patch<Strategy>(path, { expected_version: source.data!.version }),
     onSuccess: async (saved) => {
-      qc.setQueryData(["strategy", strategy.id], saved);
-      await qc.invalidateQueries({ queryKey: ["strategy", strategy.id, "source"] });
-      void qc.invalidateQueries({ queryKey: ["strategy", strategy.id, "versions"] });
-      void qc.invalidateQueries({ queryKey: ["strategies"] });
-      setDraft(null);
-      scan.reset();
+      await savedCode(qc, strategy.id)(saved);
       toast.success(t("Saved as version {v}", { v: saved.version }));
     },
     onError: (error) => {
@@ -286,19 +330,6 @@ function CodeTab({ strategy }: { strategy: Strategy }) {
     },
   });
 
-  const busy = scan.isPending || save.isPending;
-  const scanned = draft && scan.data?.code === draft.code ? scan.data.classes : [];
-  const selected = scanned.find((item) => item.class_name === picked);
-
-  function startEdit(s: StrategySource) {
-    setDraft({ code: s.code, original: s.code, version: s.version });
-    setPicked(strategy.class_name);
-    setParams(strategy.parameters);
-    setParamsError(null);
-    setAck(false);
-    scan.reset();
-  }
-
   return (
     <Card>
       <QueryBoundary query={source}>
@@ -306,77 +337,21 @@ function CodeTab({ strategy }: { strategy: Strategy }) {
           <CardContent className="grid gap-4 pt-4">
             <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
               <span className="max-w-full truncate font-mono">{s.source_path}</span>
-              {s.editable && !draft && (
-                <Button size="sm" variant="outline" onClick={() => startEdit(s)}><Pencil /> {t("Edit code")}</Button>
+              {s.editable && !editing && (
+                <Button size="sm" variant="outline" onClick={() => setEditing(true)}><Pencil /> {t("Edit code")}</Button>
               )}
             </div>
-            <StrategyCodeEditor code={draft?.code ?? s.code} label={t("Python strategy code")}
-              onChange={draft && !busy ? (code) => {
-                setDraft({ ...draft, code });
-                setAck(false);
-                if (scan.isError) scan.reset();
-              } : undefined} />
-            {draft ? (
-              <>
-                <StrategyCodeGuide />
-                {s.version !== draft.version && (
-                  <Alert tone="warning">{t("This strategy was updated. Reload it before saving.")}</Alert>
-                )}
-                <Button variant="outline" loading={scan.isPending}
-                  disabled={save.isPending || !draft.code.trim()} className="justify-self-start"
-                  onClick={() => scan.mutate(draft.code)}><ScanLine /> {t("Scan code")}</Button>
-                {scan.isError && <Alert tone="warning" role="alert">{scan.error.message}</Alert>}
-                {scanned.length > 0 && (
-                  <Field label={t("Strategy class")} htmlFor={scanned.length > 1 ? "code-class" : undefined}>
-                    {scanned.length === 1 ? (
-                      <p className="rounded-lg border bg-card px-3 py-2 font-mono text-xs">{scanned[0]!.class_name}</p>
-                    ) : (
-                      <Select id="code-class" value={picked} disabled={busy} onChange={(event) => {
-                        const item = scanned.find((entry) => entry.class_name === event.target.value);
-                        if (item) selectClass(item);
-                      }}>
-                        <option value="" disabled>{t("Choose a class")}</option>
-                        {scanned.map((item) => <option key={item.class_name} value={item.class_name}>{item.class_name}</option>)}
-                      </Select>
-                    )}
-                  </Field>
-                )}
-                {selected && (
-                  <fieldset disabled={busy} className="grid min-w-0 gap-4">
-                    {!selected.parameters_parsed && (
-                      <Alert tone="warning">{t("Default parameters could not be read from the file; enter them below.")}</Alert>
-                    )}
-                    <Field label={t("Parameters")} htmlFor="code-params">
-                      <ParamsEditor key={formRevision} id="code-params" value={params}
-                        onChange={(value, error) => { if (value) setParams(value); setParamsError(error); }} />
-                    </Field>
-                    <Alert tone="warning">
-                      <ShieldAlert />
-                      <label className="flex items-start gap-2 text-sm">
-                        <input type="checkbox" className="mt-1" checked={ack} onChange={(event) => setAck(event.target.checked)} />
-                        {t("I wrote or reviewed this code and accept that it runs with server permissions.")}
-                      </label>
-                    </Alert>
-                  </fieldset>
-                )}
-                <div className="flex flex-wrap justify-end gap-2">
-                  <Button variant="outline" disabled={busy} onClick={() => {
-                    if (draft.code !== draft.original) setDiscarding(true);
-                    else { setDraft(null); scan.reset(); }
-                  }}>{t("Cancel")}</Button>
-                  <Button loading={save.isPending}
-                    disabled={!selected || !!paramsError || !ack || scan.isPending || s.version !== draft.version}
-                    onClick={() => save.mutate(draft)}>{t("Save new version")}</Button>
-                </div>
-              </>
+            {editing ? (
+              <CodeEditor strategy={strategy} source={s} onClose={() => setEditing(false)} />
             ) : (
               <>
+                <StrategyCodeEditor code={s.code} label={t("Python strategy code")} />
                 {!s.editable && <p className="text-xs text-muted-foreground">{t("For strategies from a folder, edit the Python file in that folder.")}</p>}
                 {s.modified && (
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <p className="text-xs text-muted-foreground">{t("The file on disk differs from the saved version.")}</p>
-                    <Button size="sm" variant="outline" loading={save.isPending}
-                      onClick={() => save.mutate(null)}>{t("Save file as new version")}</Button>
+                    <Button size="sm" variant="outline" loading={saveFile.isPending}
+                      onClick={() => saveFile.mutate()}>{t("Save file as new version")}</Button>
                   </div>
                 )}
               </>
@@ -384,11 +359,6 @@ function CodeTab({ strategy }: { strategy: Strategy }) {
           </CardContent>
         )}
       </QueryBoundary>
-      <ConfirmDialog open={discarding} onOpenChange={setDiscarding} title={t("Discard code edits?")}
-        description={t("The editor will reopen with the last saved code.")}
-        confirmLabel={t("Discard changes")} destructive onConfirm={() => {
-          setDiscarding(false); setDraft(null); scan.reset();
-        }} />
     </Card>
   );
 }

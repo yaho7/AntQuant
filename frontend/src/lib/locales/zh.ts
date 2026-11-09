@@ -166,8 +166,6 @@ export const zh: Record<string, string> = {
     "已注册的 LumiBot 策略，每次运行都在独立进程中执行。",
   "Add strategy": "添加策略",
   "No strategies yet": "还没有策略",
-  "Add one of the bundled examples or upload your own LumiBot strategy file.":
-    "添加内置示例，或上传你自己的 LumiBot 策略文件。",
   Name: "名称",
   Class: "类",
   Version: "版本",
@@ -179,7 +177,6 @@ export const zh: Record<string, string> = {
   "Register a LumiBot Strategy class so you can backtest and run it.":
     "注册一个 LumiBot Strategy 类，以便回测和运行。",
   "From strategy folder": "从策略目录",
-  "Upload .py file": "上传 .py 文件",
   "Classes found in strategies/examples and in data/strategies. Files are parsed, not executed, while listing.":
     "在 strategies/examples 和 data/strategies 中找到的类。列出时只解析文件，不会执行。",
   "Only upload code you trust.": "只上传你信任的代码。",
@@ -187,10 +184,6 @@ export const zh: Record<string, string> = {
     "策略代码在独立进程中运行，权限与服务器相同：可以读取数据目录（包括加密的密钥库）并使用你的券商密钥。没有沙箱隔离。",
   "I wrote or reviewed this code and accept that it runs with server permissions.":
     "这段代码由我编写或审阅，我接受它以服务器权限运行。",
-  "Upload and scan": "上传并扫描",
-  "Import a Python strategy or start with a template.": "导入 Python 策略，或使用模板开始编写。",
-  "Use template": "使用模板",
-  "Scan code": "扫描代码",
   "Python strategy code": "Python 策略代码",
   "Python syntax error.": "Python 语法错误。",
   "Python syntax error on line {line}: {reason}": "第 {line} 行有 Python 语法错误（{reason}）。",
@@ -199,15 +192,6 @@ export const zh: Record<string, string> = {
   "File must be UTF-8 text.": "请将文件保存为 UTF-8 编码。",
   "No LumiBot Strategy subclass found. The file needs `class X(Strategy):`.": "未找到 LumiBot 策略类。请定义类似 class X(Strategy): 的类。",
   "Confirm that you trust this code: it runs with the server's permissions.": "请确认你信任这段代码，它会以服务器权限运行。",
-  "How to write a strategy": "如何编写策略",
-  "Import Strategy from lumibot.strategies and define a class such as MyStrategy(Strategy). Use initialize for setup and on_trading_iteration for the work to repeat.":
-    "从 lumibot.strategies 导入 Strategy，并定义类似 MyStrategy(Strategy) 的类。用 initialize 完成初始化，用 on_trading_iteration 编写每轮要执行的逻辑。",
-  "Put editable defaults in a class-level parameters dictionary, for example {example}. Read the saved value with {access}.":
-    "在类的 parameters 字典中声明可编辑的默认值，例如 {example}。用 {access} 读取页面保存的值。",
-  "AntQuant supplies the selected broker account and Endpoint through self.broker. Replace reads of ALPACA_API_KEY and ALPACA_API_SECRET with the provided broker connection.":
-    "AntQuant 会通过 self.broker 提供所选券商账户及其 Endpoint。请使用这个连接，替代脚本中直接读取 ALPACA_API_KEY 和 ALPACA_API_SECRET 的做法。",
-  "Use self.create_order and self.submit_order so AntQuant can apply trading controls and sync fills to Wealthfolio. The template only logs prices.":
-    "用 self.create_order 和 self.submit_order 下单，AntQuant 才能应用交易控制并将成交同步到 Wealthfolio。模板只记录价格。",
   "No configurable parameters found.": "未识别到可配置的参数。",
   "Enter a number for {name}.": "请为 {name} 输入数字。",
   "Edit lists, objects, and other values in Advanced JSON.": "列表、对象等值可在「高级 JSON」中编辑。",
@@ -220,10 +204,9 @@ export const zh: Record<string, string> = {
   "Uploaded: found {names}": "已上传，找到：{names}",
   "Strategy class": "策略类",
   "Choose a class": "选择一个类",
-  "Default parameters could not be read from the file; enter them below.":
-    "无法从文件读取默认参数，请在下方填写。",
 
   // Adding strategy code: checks, fixes, trial runs and AI help
+  "A trial run is already in progress. Wait for it to finish.": "已有一个试跑在进行，请等它结束。",
   "Paste a LumiBot strategy, upload a .py file or start from an example.": "粘贴 LumiBot 策略、上传 .py 文件，或从示例开始。",
   "Paste a strategy written for LumiBot or by an AI tool, or drop a .py file. AntQuant checks it, fixes what it can and tries it on the last month of data before you add it.":
     "粘贴在 LumiBot 或 AI 里写好的策略，或拖入 .py 文件。AntQuant 会检查代码、修复能修的问题，并在添加前用最近一个月的数据试跑。",

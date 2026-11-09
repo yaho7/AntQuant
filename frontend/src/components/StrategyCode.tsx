@@ -1,6 +1,5 @@
 import * as React from "react";
 import { t } from "@/lib/i18n";
-import { api } from "@/services/api";
 import type { DiscoveredStrategy, Params } from "@/types/api";
 
 const PythonEditor = React.lazy(() => import("@/components/PythonEditor"));
@@ -28,39 +27,19 @@ export function StrategyCodeEditor(props: React.ComponentProps<typeof PythonEdit
   );
 }
 
-export async function scanStrategyCode(code: string, filename: string): Promise<DiscoveredStrategy[]> {
-  const result = await api.post<{ classes: DiscoveredStrategy[]; error?: string; line?: number; reason?: string }>(
-    "/api/strategies/scan", { code, filename },
-  );
-  if (result.error) {
-    throw new Error(result.line
-      ? t("Python syntax error on line {line}: {reason}", { line: result.line, reason: result.reason ?? "" })
-      : t(result.error));
-  }
-  return result.classes;
-}
-
+/**
+ * New defaults from a scan, keeping values the user already set when the type
+ * still matches, and values given for keys the code reads without a default.
+ * With no defaults found, the current values stay as they are.
+ */
 export function mergeScannedParameters(item: DiscoveredStrategy, current: Params): Params {
-  if (!item.parameters_parsed || Object.keys(item.parameters).length === 0) return current;
+  if (Object.keys(item.parameters).length === 0) return current;
   const type = (value: unknown) => value === null ? "null" : Array.isArray(value) ? "array" : typeof value;
-  return Object.fromEntries(Object.entries(item.parameters).map(([key, fallback]) => [
+  const merged: Params = Object.fromEntries(Object.entries(item.parameters).map(([key, fallback]) => [
     key, Object.hasOwn(current, key) && type(current[key]) === type(fallback) ? current[key] : fallback,
   ]));
-}
-
-export function StrategyCodeGuide() {
-  return (
-    <details className="rounded-lg border bg-card px-3 py-2 text-xs text-muted-foreground">
-      <summary className="cursor-pointer text-sm font-medium text-foreground">{t("How to write a strategy")}</summary>
-      <ul className="mt-2 grid list-disc gap-2 pl-4">
-        <li>{t("Import Strategy from lumibot.strategies and define a class such as MyStrategy(Strategy). Use initialize for setup and on_trading_iteration for the work to repeat.")}</li>
-        <li>{t("Put editable defaults in a class-level parameters dictionary, for example {example}. Read the saved value with {access}.", {
-          example: 'parameters = {"symbol": "SPY"}',
-          access: 'self.parameters["symbol"]',
-        })}</li>
-        <li>{t("AntQuant supplies the selected broker account and Endpoint through self.broker. Replace reads of ALPACA_API_KEY and ALPACA_API_SECRET with the provided broker connection.")}</li>
-        <li>{t("Use self.create_order and self.submit_order so AntQuant can apply trading controls and sync fills to Wealthfolio. The template only logs prices.")}</li>
-      </ul>
-    </details>
-  );
+  for (const { name } of item.missing_parameters ?? []) {
+    if (Object.hasOwn(current, name) && !Object.hasOwn(merged, name)) merged[name] = current[name];
+  }
+  return merged;
 }
