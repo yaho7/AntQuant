@@ -171,8 +171,8 @@ Browser ──HTTPS──> FastAPI (auth, CSRF, REST) ──> services ──> S
 ### Charles Schwab
 
 Create an approved Trader API app in the Schwab Developer Portal and register an HTTPS
-callback URL, such as `https://127.0.0.1:8182`. In **Settings → Broker connection**, select
-**Charles Schwab**, enter the app credentials and matching callback URL, then open the
+callback URL, such as `https://127.0.0.1:8182`. In **Settings → Broker accounts → Add account**,
+select **Schwab**, enter the app credentials and matching callback URL, then open the
 authorization link. Paste the full redirected URL into AntQuant and choose an account.
 
 AntQuant stores credentials encrypted and refreshes short-lived access tokens. Schwab

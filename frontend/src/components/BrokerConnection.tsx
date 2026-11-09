@@ -4,6 +4,7 @@ import { useId, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Alert, Field, Input, Select } from "@/components/ui/primitives";
 import { t } from "@/lib/i18n";
+import { providerLabel } from "@/lib/profiles";
 import { api } from "@/services/api";
 import type { BrokerName, BrokerProfile } from "@/types/api";
 
@@ -15,8 +16,8 @@ export function BrokerPicker({ value, onChange }: {
   return (
     <Field label={t("Broker")} htmlFor={id}>
       <Select id={id} value={value} onChange={(event) => onChange(event.target.value as BrokerName)}>
-        <option value="alpaca">Alpaca</option>
-        <option value="schwab">{t("Charles Schwab")}</option>
+        <option value="alpaca">{providerLabel("alpaca")}</option>
+        <option value="schwab">{providerLabel("schwab")}</option>
       </Select>
     </Field>
   );

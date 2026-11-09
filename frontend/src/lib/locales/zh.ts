@@ -512,7 +512,6 @@ export const zh: Record<string, string> = {
   "Type \"LIQUIDATE LIVE\" to confirm.": "请输入「LIQUIDATE LIVE」确认。",
 
   // Broker selection and Schwab authorization
-  "Charles Schwab": "嘉信理财（Schwab）",
   "Alpaca": "Alpaca",
   "Connect a broker (optional)": "连接券商（可选）",
   "Connect broker": "连接券商",
