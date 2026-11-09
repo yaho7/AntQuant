@@ -10,14 +10,14 @@ RUN npm run build
 
 # ---------- 2. Python dependencies (locked, no dev tools) ----------
 FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS python-deps
-ENV UV_COMPILE_BYTECODE=1 \
-    UV_LINK_MODE=copy \
+ENV UV_LINK_MODE=copy \
     UV_PYTHON_DOWNLOADS=never \
     UV_PROJECT_ENVIRONMENT=/app/.venv
 WORKDIR /app
 COPY pyproject.toml uv.lock ./
+# polars[rtcompat] brings both native runtimes. Ship only the baseline one on x86.
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen --no-dev --no-install-project
+    uv sync --frozen --no-dev --no-install-project --no-install-package polars-runtime-32
 
 # ---------- 3. Runtime ----------
 FROM python:3.12-slim-bookworm AS runtime
